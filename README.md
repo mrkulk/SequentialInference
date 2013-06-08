@@ -1,4 +1,4 @@
-Dirichlet Process Mixture Model - Gaussian Data
+Dirichlet Process Mixture Model - Gaussian Observations
 ==============
 
 DP Mixture Algorithm #2 from Neal 2000 
