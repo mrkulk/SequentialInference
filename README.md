@@ -1,8 +1,12 @@
 Dirichlet Process Mixture Model - Gaussian Observations
 ==============
 
-DP Mixture Algorithm #2 from Neal 2000 
+Contains gibbs and SMC implementation of DPMM 
 
+
+
+# GIBBS
+DP Mixture Algorithm #2 from Neal 2000 
 
 To run: 
 
