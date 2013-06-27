@@ -13,8 +13,8 @@ using PyCall
 
 ############# HELPER FUNCTIONS and DATASTRUCTURES #################
 myappend{T}(v::Vector{T}, x::T) = [v..., x] #Appending to arrays
-NUM_PARTICLES = 1000
-DIMENSIONS = 2
+NUM_PARTICLES = 500
+DIMENSIONS = 1
 NUM_POINTS = 99
 state = Dict()
 particles = Dict()
@@ -166,8 +166,8 @@ function posterior_z_j_old(support, state,time)
 		posterior += log(cid_cardinality/(total_pts + alpha)) ##prior
 		#println("[posterior_z_j_old]", " v:", posterior, " cid:", cid_cardinality)
 		for d=1:DIMENSIONS
-			obs_mean = get_empirical_mean(data["get_data_arr"][d][1:time])
-			obs_var = get_empirical_variance(data["get_data_arr"][d][1:time], obs_mean)
+			obs_mean = get_empirical_mean(data["get_data_arr"][d][indices])#[1:time])
+			obs_var = get_empirical_variance(data["get_data_arr"][d][indices], obs_mean)#[1:time], obs_mean)
 			posterior += posterior_z_helper(cid_cardinality, total_pts, a, b, tao, alpha ,eta, obs_mean, obs_var)
 		end
 	end
@@ -188,13 +188,14 @@ function posterior_z_j_new(support, state,time)
 			#println("[posterior_z_j_new] existing", " v:", posterior, " cid:", cid_cardinality)
 		else #new cluster
 			cid_cardinality = 1
+			indices = time
 			posterior += log(alpha/(total_pts + alpha)) ##prior
 			#println("[posterior_z_j_new] new", " v:", posterior, " cid:", cid_cardinality)
 		end
 
 		for d=1:DIMENSIONS
-			obs_mean = get_empirical_mean(data["get_data_arr"][d][1:time])
-			obs_var = get_empirical_variance(data["get_data_arr"][d][1:time], obs_mean)
+			obs_mean = get_empirical_mean(data["get_data_arr"][d][indices])#[1:time])
+			obs_var = get_empirical_variance(data["get_data_arr"][d][indices], obs_mean)#[1:time], obs_mean)
 			posterior += posterior_z_helper(cid_cardinality, total_pts, a, b, tao, alpha ,eta, obs_mean, obs_var)
 		end
 	end
