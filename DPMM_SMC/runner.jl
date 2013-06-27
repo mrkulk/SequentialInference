@@ -13,7 +13,7 @@ using PyCall
 
 ############# HELPER FUNCTIONS and DATASTRUCTURES #################
 myappend{T}(v::Vector{T}, x::T) = [v..., x] #Appending to arrays
-NUM_PARTICLES = 500
+NUM_PARTICLES = 100
 DIMENSIONS = 1
 NUM_POINTS = 99
 state = Dict()
@@ -235,7 +235,7 @@ function run_sampler()
 		for N=1:length(particles[time-1])
 
 			###  Calculate posterior of older state
-			support = particles[time-1][N]["hidden_state"]["c_aggregate"]
+			support = unique(particles[time-1][N]["hidden_state"]["c_aggregate"])
 			posterior_old = posterior_z_j_old(support, particles[time-1][N]["hidden_state"], time-1)
 			
 			if DEBUG == 1
@@ -244,15 +244,16 @@ function run_sampler()
 
 			### Creating particles with different support
 			z_support = particles[time-1][N]["hidden_state"]["c_aggregate"]
-			z_support = myappend(z_support, max(z_support)+1)
+			z_support = unique(myappend(z_support, max(z_support)+1))
 			for j in z_support
 				state=Dict()
 				state["c"] = j
+
 				state["c_aggregate"] = myappend(particles[time-1][N]["hidden_state"]["c_aggregate"], j)
 				particles[time][PARTICLE_COUNT] = Dict(); 
 				particles[time][PARTICLE_COUNT]["hidden_state"] = state;
 
-				new_support = particles[time][PARTICLE_COUNT]["hidden_state"]["c_aggregate"];
+				new_support = unique(particles[time][PARTICLE_COUNT]["hidden_state"]["c_aggregate"])
 
 				ratio = posterior_z_j_new(new_support, particles[time][PARTICLE_COUNT]["hidden_state"], time) - posterior_old;
 				if particles[time-1][N]["weight"] == 0.0
