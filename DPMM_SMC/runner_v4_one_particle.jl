@@ -13,9 +13,9 @@ using PyCall
 
 ############# HELPER FUNCTIONS and DATASTRUCTURES #################
 myappend{T}(v::Vector{T}, x::T) = [v..., x] #Appending to arrays
-NUM_PARTICLES = 50
+NUM_PARTICLES = 1
 DIMENSIONS = 2
-NUM_POINTS = 99
+NUM_POINTS = 5
 state = Dict()
 particles = Dict()
 hyperparameters = Dict()
@@ -38,12 +38,12 @@ function plotPointsfromChain(time)
 	ariArr = []
 	pylab.clf()
 	for N=1:length(particles[time])
-		"""for i=1:time
+		for i=1:time
 			pylab.plot(data[i][1],data[i][2], "o", color=COLORS[particles[time][N]["hidden_state"]["c_aggregate"][i]])
 		end
 		pylab.xlim([-1 ,3])
 		pylab.ylim([-1 ,3])
-		pylab.savefig(string("time:", time, " PARTICLE_",N,"_",".png"))"""
+		pylab.savefig(string("time:", time, " PARTICLE_",N,"_",".png"))
 
 		true_clusters = data["c_aggregate"][1:time]
 		inferred_clusters = particles[time][N]["hidden_state"]["c_aggregate"]
@@ -318,7 +318,7 @@ function run_sampler()
 		normalizeWeights(time)
 		resample(time)
 		recycle(time)
-		#println(particles)
+		println(particles)
 		if mod(time, 1) == 0
 			plotPointsfromChain(time)
 		end
@@ -328,7 +328,7 @@ end
 
 
 #################### MAIN RUNNER ####################
-loadObservations()
+loadObservations2()
 run_sampler()
 
 

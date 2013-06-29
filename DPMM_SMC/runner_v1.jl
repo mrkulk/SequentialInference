@@ -13,8 +13,8 @@ using PyCall
 
 ############# HELPER FUNCTIONS and DATASTRUCTURES #################
 myappend{T}(v::Vector{T}, x::T) = [v..., x] #Appending to arrays
-NUM_PARTICLES = 50
-DIMENSIONS = 2
+NUM_PARTICLES = 5000
+DIMENSIONS = 1
 NUM_POINTS = 99
 state = Dict()
 particles = Dict()
@@ -28,7 +28,7 @@ data = Dict()
 COLORS =[[rand(),rand(),rand()] for i =1:50]
 
 function plotPoints(data,fname)
-	for i=1:NUM_POINTS
+	for i=1:length(data)
 		pylab.plot(data[i][1],data[i][2], "o", color=COLORS[data[i]["c"]])
 	end
 	pylab.savefig(string(fname,".png"))
@@ -36,13 +36,10 @@ end
 
 function plotPointsfromChain(time)
 	ariArr = []
-	pylab.clf()
 	for N=1:length(particles[time])
 		"""for i=1:time
 			pylab.plot(data[i][1],data[i][2], "o", color=COLORS[particles[time][N]["hidden_state"]["c_aggregate"][i]])
 		end
-		pylab.xlim([-1 ,3])
-		pylab.ylim([-1 ,3])
 		pylab.savefig(string("time:", time, " PARTICLE_",N,"_",".png"))"""
 
 		true_clusters = data["c_aggregate"][1:time]
@@ -51,38 +48,6 @@ function plotPointsfromChain(time)
 	end
 	println("time:", time," Maximum ARI: ", max(ariArr))
 end
-
-
-function loadObservations2()
-	data = Dict()
-	mu={[0,0], [4,4]}
-	std={[0.1,0.1], [0.1,0.1]}
-	data["c_aggregate"] = zeros(NUM_POINTS)
-
-	data["get_data_arr"] = Dict()
-	for d=1:DIMENSIONS
-		data["get_data_arr"][d]=[]
-	end
-
-	for i=1:NUM_POINTS
-		if i == 1 || i == 2
-			idx = 1
-		else
-			idx = 2
-		end
-		data[i] = Dict()
-		data[i]["c"] = idx
-		data["c_aggregate"][i] = idx
-		for d=1:DIMENSIONS
-			data[i][d] = rand(Normal(mu[idx][d],std[idx][d]))
-			data["get_data_arr"][d] = myappend(data["get_data_arr"][d], data[i][d])
-		end
-	end
-	plotPoints(data,"original")
-	return data
-end
-
-
 
 function loadObservations()
 	data = Dict()
@@ -106,7 +71,7 @@ function loadObservations()
 			data["get_data_arr"][d] = myappend(data["get_data_arr"][d], data[i][d])
 		end
 	end
-	plotPoints(data,"original")
+	#plotPoints(data,"original")
 	return data
 end
 
@@ -157,7 +122,7 @@ function resample(time)
 		sample_arr = rand(Multinomial(1,weight_vector))
 		particles_new_indx[i] = findin(sample_arr, 1)[1]
 		particles[time][i] = particles_temporary[particles_new_indx[i]]
-		#particles[time][i]["weight"] = 1/NUM_PARTICLES
+		particles[time][i]["weight"] = 1/NUM_PARTICLES
 	end
 end	
 
@@ -180,7 +145,7 @@ end
 
 function posterior_z_helper(nj, total_pts, a, b, tao, alpha ,eta, obs_mean, obs_var)
 	posterior = 0
-	posterior += a*log(b) + log(gamma(a+(nj+1)*0.5))
+	posterior += a*log(b) + log(gamma(a+nj*0.5))
 	posterior -= log(gamma(a)) + log(sqrt(nj*tao + 1))
 	
 	tmp_term = 0
@@ -191,57 +156,52 @@ function posterior_z_helper(nj, total_pts, a, b, tao, alpha ,eta, obs_mean, obs_
 end
 
 
-function get_joint_crp_probability(cid, cid_cardinality, indices, alpha)
-	numerator = 0
-	denominator = 0
-	for i=1:cid_cardinality-1
-		numerator += log(i)
-		denominator += log(alpha + i - 1)
-	end
-	denominator += log(alpha + cid_cardinality - 1)
 
-	ret = log(alpha)+numerator-denominator
-
-	return ret
-end
-
-
-
-
-function get_posterior_zj(cid, state,time)
+function posterior_z_j_old(support, state,time)
 	a = hyperparameters["a"]; b=hyperparameters["b"]; alpha = hyperparameters["alpha"]; tao = hyperparameters["tao"]; eta = hyperparameters["eta"];total_pts = time
 	posterior = 0
 
-	#for cid in support
-	if cid <= max(state["c_aggregate"])
+	for cid in support
 		cid_cardinality, indices = get_pts_in_cluster(state["c_aggregate"], cid)
 		posterior += log(cid_cardinality/(total_pts + alpha)) ##prior
-		#println("[PRIOR] existing", " value:", exp(posterior), " cid:", cid)
-	else #new cluster
-		cid_cardinality = 1
-		posterior += log(alpha/(total_pts + alpha)) ##prior
-		#println("[PRIOR] new", " value:", exp(posterior), " cid:", cid)
-	end
-
-	for d=1:DIMENSIONS
-		if cid_cardinality == 1
-			obs_mean =  get_empirical_mean(data["get_data_arr"][d][time])
-			obs_var = get_empirical_mean(data["get_data_arr"][d][time])
-		else
-			indices = myappend(indices, time)
+		#println("[posterior_z_j_old]", " v:", posterior, " cid:", cid_cardinality)
+		for d=1:DIMENSIONS
 			obs_mean = get_empirical_mean(data["get_data_arr"][d][indices])#[1:time])
 			obs_var = get_empirical_variance(data["get_data_arr"][d][indices], obs_mean)#[1:time], obs_mean)
+			posterior += posterior_z_helper(cid_cardinality, total_pts, a, b, tao, alpha ,eta, obs_mean, obs_var)
 		end
-		posterior += posterior_z_helper(cid_cardinality, total_pts, a, b, tao, alpha ,eta, obs_mean, obs_var)
 	end
 
-	#end
-	#println("[POSTERIOR] ", " v:", exp(posterior), " cid:", cid)
-	#println("\n")
-	return exp(posterior)
+	return posterior
 end
 
 
+
+function posterior_z_j_new(support, state,time)
+	a = hyperparameters["a"]; b=hyperparameters["b"]; alpha = hyperparameters["alpha"]; tao = hyperparameters["tao"]; eta = hyperparameters["eta"];total_pts = time
+	posterior = 0
+
+	for cid in support 
+		if cid < max(state["c_aggregate"])
+			cid_cardinality, indices = get_pts_in_cluster(state["c_aggregate"], cid)
+			posterior += log(cid_cardinality/(total_pts + alpha)) ##prior
+			#println("[posterior_z_j_new] existing", " v:", posterior, " cid:", cid_cardinality)
+		else #new cluster
+			cid_cardinality = 1
+			indices = time
+			posterior += log(alpha/(total_pts + alpha)) ##prior
+			#println("[posterior_z_j_new] new", " v:", posterior, " cid:", cid_cardinality)
+		end
+
+		for d=1:DIMENSIONS
+			obs_mean = get_empirical_mean(data["get_data_arr"][d][indices])#[1:time])
+			obs_var = get_empirical_variance(data["get_data_arr"][d][indices], obs_mean)#[1:time], obs_mean)
+			posterior += posterior_z_helper(cid_cardinality, total_pts, a, b, tao, alpha ,eta, obs_mean, obs_var)
+		end
+	end
+
+	return posterior
+end
 
 ## deleting ancestors as do not need them now
 function recycle(time)
@@ -249,21 +209,6 @@ function recycle(time)
 		delete!(particles,time-2)
 	end
 end
-
-
-
-function sample_from_crp(z_posterior_array_probability, z_posterior_array_cid)
-	normalizing_constant = sum(z_posterior_array_probability)
-	z_posterior_array_probability /= normalizing_constant
-	#println(z_posterior_array_probability)
-	sample_arr = rand(Multinomial(1,z_posterior_array_probability))
-	indx = findin(sample_arr, 1)[1]
-	cid = z_posterior_array_cid[indx]
-	weight = z_posterior_array_probability[indx]
-
-	return weight, cid
-end
-
 
 
 function run_sampler()
@@ -278,8 +223,7 @@ function run_sampler()
 		particles[time][i] = {"weight" => 1, "hidden_state" => state}
 	end
 	normalizeWeights(time)
-	resample(time)
-
+	FC_resample(time)
 	for time = 2:NUM_POINTS
 
 		println("##################")
@@ -287,8 +231,13 @@ function run_sampler()
 		###### PARTICLE CREATION and EVOLUTION #######
 		particles[time]=Dict()
 
-		for N=1:NUM_PARTICLES
+		PARTICLE_COUNT = 1
+		for N=1:length(particles[time-1])
 
+			###  Calculate posterior of older state
+			support = unique(particles[time-1][N]["hidden_state"]["c_aggregate"])
+			posterior_old = posterior_z_j_old(support, particles[time-1][N]["hidden_state"], time-1)
+			
 			if DEBUG == 1
 				println("PARTICLE:", N ," weight:", particles[time-1][N]["weight"], " support:",support)		
 			end
@@ -296,29 +245,29 @@ function run_sampler()
 			### Creating particles with different support
 			z_support = particles[time-1][N]["hidden_state"]["c_aggregate"]
 			z_support = unique(myappend(z_support, max(z_support)+1))
-
-			z_posterior_array_probability = []
-			z_posterior_array_cid = []
-
 			for j in z_support
-				zj_probability = get_posterior_zj(j, particles[time-1][N]["hidden_state"], time)
-				z_posterior_array_probability = myappend(z_posterior_array_probability, zj_probability)
-				z_posterior_array_cid = myappend(z_posterior_array_cid, j)
+				state=Dict()
+				state["c"] = j
+
+				state["c_aggregate"] = myappend(particles[time-1][N]["hidden_state"]["c_aggregate"], j)
+				particles[time][PARTICLE_COUNT] = Dict(); 
+				particles[time][PARTICLE_COUNT]["hidden_state"] = state;
+
+				new_support = unique(particles[time][PARTICLE_COUNT]["hidden_state"]["c_aggregate"])
+
+				ratio = posterior_z_j_new(new_support, particles[time][PARTICLE_COUNT]["hidden_state"], time) - posterior_old;
+				if particles[time-1][N]["weight"] == 0.0
+					@bp
+				end		
+				weight =  log(particles[time-1][N]["weight"]) + ratio
+				weight = exp(weight)
+				particles[time][PARTICLE_COUNT]["weight"] = weight+1e-50; 
+				PARTICLE_COUNT+=1 #this will be eventually equal to N*max(support of all prev particles)
 			end
-
-			particles[time][N] = Dict()
-
-			particles[time][N]["weight"], sampled_cid = sample_from_crp(z_posterior_array_probability, z_posterior_array_cid)
-			state=Dict()
-			state["c"] = sampled_cid
-			state["c_aggregate"] = myappend(particles[time-1][N]["hidden_state"]["c_aggregate"], sampled_cid)
-			particles[time][N]["hidden_state"]=state
 		end
-
 		normalizeWeights(time)
-		resample(time)
+		FC_resample(time)
 		recycle(time)
-		#println(particles)
 		if mod(time, 1) == 0
 			plotPointsfromChain(time)
 		end

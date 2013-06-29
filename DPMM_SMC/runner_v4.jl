@@ -13,7 +13,7 @@ using PyCall
 
 ############# HELPER FUNCTIONS and DATASTRUCTURES #################
 myappend{T}(v::Vector{T}, x::T) = [v..., x] #Appending to arrays
-NUM_PARTICLES = 50
+NUM_PARTICLES = 500
 DIMENSIONS = 2
 NUM_POINTS = 99
 state = Dict()
@@ -36,14 +36,11 @@ end
 
 function plotPointsfromChain(time)
 	ariArr = []
-	pylab.clf()
 	for N=1:length(particles[time])
-		"""for i=1:time
-			pylab.plot(data[i][1],data[i][2], "o", color=COLORS[particles[time][N]["hidden_state"]["c_aggregate"][i]])
-		end
-		pylab.xlim([-1 ,3])
-		pylab.ylim([-1 ,3])
-		pylab.savefig(string("time:", time, " PARTICLE_",N,"_",".png"))"""
+		#for i=1:time
+		#	pylab.plot(data[i][1],data[i][2], "o", color=COLORS[particles[time][N]["hidden_state"]["c_aggregate"][i]])
+		#end
+		#pylab.savefig(string("time:", time, " PARTICLE_",N,"_",".png"))
 
 		true_clusters = data["c_aggregate"][1:time]
 		inferred_clusters = particles[time][N]["hidden_state"]["c_aggregate"]
@@ -51,38 +48,6 @@ function plotPointsfromChain(time)
 	end
 	println("time:", time," Maximum ARI: ", max(ariArr))
 end
-
-
-function loadObservations2()
-	data = Dict()
-	mu={[0,0], [4,4]}
-	std={[0.1,0.1], [0.1,0.1]}
-	data["c_aggregate"] = zeros(NUM_POINTS)
-
-	data["get_data_arr"] = Dict()
-	for d=1:DIMENSIONS
-		data["get_data_arr"][d]=[]
-	end
-
-	for i=1:NUM_POINTS
-		if i == 1 || i == 2
-			idx = 1
-		else
-			idx = 2
-		end
-		data[i] = Dict()
-		data[i]["c"] = idx
-		data["c_aggregate"][i] = idx
-		for d=1:DIMENSIONS
-			data[i][d] = rand(Normal(mu[idx][d],std[idx][d]))
-			data["get_data_arr"][d] = myappend(data["get_data_arr"][d], data[i][d])
-		end
-	end
-	plotPoints(data,"original")
-	return data
-end
-
-
 
 function loadObservations()
 	data = Dict()
@@ -180,7 +145,7 @@ end
 
 function posterior_z_helper(nj, total_pts, a, b, tao, alpha ,eta, obs_mean, obs_var)
 	posterior = 0
-	posterior += a*log(b) + log(gamma(a+(nj+1)*0.5))
+	posterior += a*log(b) + log(gamma(a+nj*0.5))
 	posterior -= log(gamma(a)) + log(sqrt(nj*tao + 1))
 	
 	tmp_term = 0
@@ -208,36 +173,37 @@ end
 
 
 
-function get_posterior_zj(cid, state,time)
+function get_posterior_zj(support, state,time)
 	a = hyperparameters["a"]; b=hyperparameters["b"]; alpha = hyperparameters["alpha"]; tao = hyperparameters["tao"]; eta = hyperparameters["eta"];total_pts = time
 	posterior = 0
 
-	#for cid in support
-	if cid <= max(state["c_aggregate"])
-		cid_cardinality, indices = get_pts_in_cluster(state["c_aggregate"], cid)
-		posterior += log(cid_cardinality/(total_pts + alpha)) ##prior
-		#println("[PRIOR] existing", " value:", exp(posterior), " cid:", cid)
-	else #new cluster
-		cid_cardinality = 1
-		posterior += log(alpha/(total_pts + alpha)) ##prior
-		#println("[PRIOR] new", " value:", exp(posterior), " cid:", cid)
-	end
-
-	for d=1:DIMENSIONS
-		if cid_cardinality == 1
-			obs_mean =  get_empirical_mean(data["get_data_arr"][d][time])
-			obs_var = get_empirical_mean(data["get_data_arr"][d][time])
-		else
-			indices = myappend(indices, time)
-			obs_mean = get_empirical_mean(data["get_data_arr"][d][indices])#[1:time])
-			obs_var = get_empirical_variance(data["get_data_arr"][d][indices], obs_mean)#[1:time], obs_mean)
+	for cid in support 
+		if cid < max(state["c_aggregate"])
+			cid_cardinality, indices = get_pts_in_cluster(state["c_aggregate"], cid)
+			posterior += log(cid_cardinality/(total_pts + alpha)) ##prior
+			#println("[posterior_z_j_new] existing", " v:", posterior, " cid:", cid_cardinality)
+		else #new cluster
+			cid_cardinality = 0
+			posterior += log(alpha/(total_pts + alpha)) ##prior
+			#println("[posterior_z_j_new] new", " v:", posterior, " cid:", cid_cardinality)
 		end
-		posterior += posterior_z_helper(cid_cardinality, total_pts, a, b, tao, alpha ,eta, obs_mean, obs_var)
+
+		for d=1:DIMENSIONS
+			if cid_cardinality == 0
+				obs_mean = 0
+				obs_var = 0
+			else
+				obs_mean = get_empirical_mean(data["get_data_arr"][d][indices])#[1:time])
+				obs_var = get_empirical_variance(data["get_data_arr"][d][indices], obs_mean)#[1:time], obs_mean)
+			end
+			posterior += posterior_z_helper(cid_cardinality, total_pts, a, b, tao, alpha ,eta, obs_mean, obs_var)
+		end
+
+		#prior calculations
+		#prior = get_joint_crp_probability(cid, cid_cardinality, indices, alpha)
+		#posterior += prior
 	end
 
-	#end
-	#println("[POSTERIOR] ", " v:", exp(posterior), " cid:", cid)
-	#println("\n")
 	return exp(posterior)
 end
 
@@ -255,7 +221,7 @@ end
 function sample_from_crp(z_posterior_array_probability, z_posterior_array_cid)
 	normalizing_constant = sum(z_posterior_array_probability)
 	z_posterior_array_probability /= normalizing_constant
-	#println(z_posterior_array_probability)
+
 	sample_arr = rand(Multinomial(1,z_posterior_array_probability))
 	indx = findin(sample_arr, 1)[1]
 	cid = z_posterior_array_cid[indx]
@@ -301,13 +267,12 @@ function run_sampler()
 			z_posterior_array_cid = []
 
 			for j in z_support
-				zj_probability = get_posterior_zj(j, particles[time-1][N]["hidden_state"], time)
+				zj_probability = get_posterior_zj(particles[time-1][N]["hidden_state"]["c_aggregate"], particles[time-1][N]["hidden_state"], time-1)
 				z_posterior_array_probability = myappend(z_posterior_array_probability, zj_probability)
 				z_posterior_array_cid = myappend(z_posterior_array_cid, j)
 			end
 
 			particles[time][N] = Dict()
-
 			particles[time][N]["weight"], sampled_cid = sample_from_crp(z_posterior_array_probability, z_posterior_array_cid)
 			state=Dict()
 			state["c"] = sampled_cid
@@ -318,7 +283,6 @@ function run_sampler()
 		normalizeWeights(time)
 		resample(time)
 		recycle(time)
-		#println(particles)
 		if mod(time, 1) == 0
 			plotPointsfromChain(time)
 		end
