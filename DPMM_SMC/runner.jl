@@ -13,7 +13,7 @@ using PyCall
 
 ############# HELPER FUNCTIONS and DATASTRUCTURES #################
 myappend{T}(v::Vector{T}, x::T) = [v..., x] #Appending to arrays
-NUM_PARTICLES = 50
+NUM_PARTICLES = 2000
 DIMENSIONS = 2
 NUM_POINTS = 99
 state = Dict()
