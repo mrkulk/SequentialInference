@@ -310,7 +310,7 @@ function get_weight_lookahead(support, time)
 		z_posterior_array_probability = []
 		z_posterior_array_cid = []
 		for j in current.support
-			zj_probability = get_posterior_zj(j, current.support, current.time)
+			zj_probability = get_posterior_zj(j, current.support, current.time) ####FIXME SHOULD NOT BE SUPPORT!
 			z_posterior_array_probability = myappend(z_posterior_array_probability, zj_probability)
 			z_posterior_array_cid = myappend(z_posterior_array_cid, j)
 		end
@@ -341,7 +341,7 @@ function path_integral(time, N)
 	z_posterior_array_cid = []
 	println(root_support)
 	for j in root_support
-		zj_probability = get_posterior_zj(j, root_support, time)
+		zj_probability = get_posterior_zj(j, myappend(particles[time-1][N]["hidden_state"]["c_aggregate"], j), time)
 
 		##### lookahead. this will be support it explores further
 		#trajectory_start_support = myappend(particles[time-1][N]["hidden_state"]["c_aggregate"], j)
