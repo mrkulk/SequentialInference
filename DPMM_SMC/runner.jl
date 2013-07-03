@@ -23,9 +23,9 @@ end
 
 ############# HELPER FUNCTIONS and DATASTRUCTURES #################
 myappend{T}(v::Vector{T}, x::T) = [v..., x] #Appending to arrays
-const NUM_PARTICLES = 10
+const NUM_PARTICLES = 1
 const DIMENSIONS = 2
-const NUM_POINTS = 10
+const NUM_POINTS = 100
 state = Dict()
 particles = Dict()
 hyperparameters = Dict()
@@ -33,8 +33,8 @@ hyperparameters["a"]=1;hyperparameters["b"]=1;hyperparameters["alpha"]=0.5;hyper
 const _DEBUG = 0
 data = Dict()
 
-const LOOKAHEAD_DELTA = 2
-const INTEGRAL_PATHS = 1
+const LOOKAHEAD_DELTA = 10 #0
+const INTEGRAL_PATHS = 200
 
 #################### DATA LOADER AND PLOTTING ##################################
 const COLORS =[[rand(),rand(),rand()] for i =1:50]
@@ -279,6 +279,11 @@ end
 
 
 function get_weight_lookahead(support, time)
+	
+	if LOOKAHEAD_DELTA == 0
+		return 1
+	end
+
 	PATH_QUEUE = PriorityQueue()
 	PCNT = 0
 
@@ -312,7 +317,7 @@ function get_weight_lookahead(support, time)
 		# Now choose 'p' children and add to queue
 		for p=1:INTEGRAL_PATHS
 			weight, sampled_cid = sample_from_crp(z_posterior_array_probability, z_posterior_array_cid)
-			if sampled_cid == max(curren.support)
+			if sampled_cid == max(current.support)
 				child_support = myappend(current.support, sampled_cid+1)
 			else
 				child_support = copy(current.support)
@@ -334,12 +339,12 @@ function path_integral(time, N)
 	z_posterior_array_cid = []
 	for j in root_support
 		zj_probability = get_posterior_zj(j, particles[time-1][N]["hidden_state"], time)
-		zj_probability += get_weight_lookahead(unique(myappend(particles[time-1][N]["hidden_state"]["c_aggregate"], j)), time)
+		zj_probability *= get_weight_lookahead(unique(myappend(particles[time-1][N]["hidden_state"]["c_aggregate"], j)), time)
 		z_posterior_array_probability = myappend(z_posterior_array_probability, zj_probability)
 		z_posterior_array_cid = myappend(z_posterior_array_cid, j)
 	end
-	#weight, sampled_cid = sample_from_crp(z_posterior_array_probability, z_posterior_array_cid)
-	return 1,1#weight, sampled_cid
+	weight, sampled_cid = sample_from_crp(z_posterior_array_probability, z_posterior_array_cid)
+	return weight, sampled_cid
 end
 
 
@@ -383,9 +388,9 @@ function run_sampler()
 		resample(time)
 		recycle(time)
 		#println(particles)
-		#if mod(time, 1) == 0
-		#	plotPointsfromChain(time)
-		#end
+		if mod(time, 1) == 0
+			plotPointsfromChain(time)
+		end
 	end
 
 end
