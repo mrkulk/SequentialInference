@@ -8,6 +8,7 @@ using Distributions
 using Debug
 using PyCall
 using Base.Collections
+require("dataset.jl")
 
 @pyimport pylab
 @pyimport sklearn.metrics as metrics
@@ -17,6 +18,7 @@ type node
 	weight
 	depth
 	time
+	prev_c_aggregate
 end
 
 
@@ -24,9 +26,17 @@ end
 
 ############# HELPER FUNCTIONS and DATASTRUCTURES #################
 myappend{T}(v::Vector{T}, x::T) = [v..., x] #Appending to arrays
+
+
+const ENUMERATION = 0
+
 const NUM_PARTICLES = 1
+const LOOKAHEAD_DELTA = 2#2 with 100 		 6 works best with 500 particles
+const INTEGRAL_PATHS = 20#1 with 100 		 3 works best with 500 particles
+
+
 const DIMENSIONS = 2
-const NUM_POINTS = 100
+NUM_POINTS = 200
 state = Dict()
 particles = Dict()
 hyperparameters = Dict()
@@ -34,8 +44,7 @@ hyperparameters["a"]=1;hyperparameters["b"]=1;hyperparameters["alpha"]=0.5;hyper
 const _DEBUG = 0
 data = Dict()
 
-const LOOKAHEAD_DELTA = 0#10
-const INTEGRAL_PATHS = 50
+
 
 #################### DATA LOADER AND PLOTTING ##################################
 const COLORS =[[rand(),rand(),rand()] for i =1:50]
@@ -54,8 +63,6 @@ function plotPointsfromChain(time)
 		"""for i=1:time
 			pylab.plot(data[i][1],data[i][2], "o", color=COLORS[particles[time][N]["hidden_state"]["c_aggregate"][i]])
 		end
-		pylab.xlim([-1 ,3])
-		pylab.ylim([-1 ,3])
 		pylab.savefig(string("time:", time, " PARTICLE_",N,"_",".png"))"""
 
 		true_clusters = data["c_aggregate"][1:time]
@@ -96,11 +103,9 @@ function loadObservations2()
 end
 
 
-
 function loadObservations()
 	data = Dict()
-	mu={[0,0], [2,2], [4,4]}
-	std={[0.25,0.25], [0.25,0.25], [0.25,0.25]}
+	mu,std,mixture_weights = dataset2()
 	data["c_aggregate"] = zeros(NUM_POINTS)
 
 	data["get_data_arr"] = Dict()
@@ -109,7 +114,7 @@ function loadObservations()
 	end
 
 	for i=1:NUM_POINTS
-		sample_arr = rand(Multinomial(1,[1/2,1/6,1/3]))
+		sample_arr = rand(Multinomial(1,mixture_weights))
 		idx = findin(sample_arr, 1)[1]
 		data[i] = Dict()
 		data[i]["c"] = idx
@@ -279,7 +284,7 @@ function sample_from_crp(z_posterior_array_probability, z_posterior_array_cid)
 end
 
 
-function get_weight_lookahead(support, time)
+function get_weight_lookahead(support, c_aggregate, time)
 	
 	if LOOKAHEAD_DELTA == 0
 		return 1
@@ -289,43 +294,67 @@ function get_weight_lookahead(support, time)
 	PCNT = 0
 
 	DEPTH = 1
-	root = node(support, 1, DEPTH, time)
+	root = node(support, 1, DEPTH, time, c_aggregate)
 	time += 1
 	enqueue!(PATH_QUEUE, root,PCNT)
 	PCNT+=1
 	DEPTH+=1
 	
 	while true
-		if DEPTH == LOOKAHEAD_DELTA
+		current = dequeue!(PATH_QUEUE)
+
+		if current.depth == LOOKAHEAD_DELTA
+			wARR = []
 			#terminate and return with weight
-			weight = 0
+			weight = current.weight
+			#wARR = myappend(wARR, weight)
 			while length(PATH_QUEUE) > 0 
 				elm = dequeue!(PATH_QUEUE)
 				weight += elm.weight
+				#wARR = myappend(wARR, elm.weight)
 			end
 			return weight
 		end
-
-		current = dequeue!(PATH_QUEUE)
 		z_posterior_array_probability = []
 		z_posterior_array_cid = []
+
 		for j in current.support
-			zj_probability = get_posterior_zj(j, current.support, current.time) ####FIXME SHOULD NOT BE SUPPORT!
+			current_c_aggregate = myappend(current.prev_c_aggregate, j)
+			zj_probability = get_posterior_zj(j, current_c_aggregate, current.time) 
+
 			z_posterior_array_probability = myappend(z_posterior_array_probability, zj_probability)
 			z_posterior_array_cid = myappend(z_posterior_array_cid, j)
 		end
 
 		# Now choose 'p' children and add to queue
-		for p=1:INTEGRAL_PATHS
-			weight, sampled_cid = sample_from_crp(z_posterior_array_probability, z_posterior_array_cid)
-			if sampled_cid == max(current.support)
-				child_support = myappend(current.support, sampled_cid+1)
-			else
-				child_support = copy(current.support)
+		if ENUMERATION == 1
+			normalizing_constant = sum(z_posterior_array_probability)
+			z_posterior_array_probability /= normalizing_constant
+
+			for ind=1:length(z_posterior_array_cid)
+				child_support = unique(myappend(current.support, z_posterior_array_cid[ind]))
+				child_c_aggregate = myappend(current.prev_c_aggregate, z_posterior_array_cid[ind])
+				weight = z_posterior_array_probability[ind]
+				child = node(unique(child_support), current.weight*weight, DEPTH, time, child_c_aggregate)
+				enqueue!(PATH_QUEUE, child, PCNT)
+				PCNT+=1
 			end
-			child = node(child_support, current.weight*weight, DEPTH, time)
-			enqueue!(PATH_QUEUE, child, PCNT)
-			PCNT+=1
+		else 
+			for p=1:INTEGRAL_PATHS
+				weight, sampled_cid = sample_from_crp(z_posterior_array_probability, z_posterior_array_cid)
+				if sampled_cid == max(current.support)
+					child_support = myappend(current.support, sampled_cid+1)
+				else
+					#indx=findin(current.support, max(current.support))[1] 
+					#delete!(current.support, indx)
+					child_support = copy(current.support)
+				end
+				# Adding cluster for each data point until current time for child
+				child_c_aggregate = myappend(current.prev_c_aggregate, sampled_cid)
+				child = node(unique(child_support), current.weight*weight, DEPTH, time, child_c_aggregate)
+				enqueue!(PATH_QUEUE, child, PCNT)
+				PCNT+=1
+			end
 		end
 		DEPTH+=1
 		time+=1
@@ -339,13 +368,13 @@ function path_integral(time, N)
 	
 	z_posterior_array_probability = []
 	z_posterior_array_cid = []
-	println(root_support)
+
 	for j in root_support
-		zj_probability = get_posterior_zj(j, myappend(particles[time-1][N]["hidden_state"]["c_aggregate"], j), time)
+		current_c_aggregate = myappend(particles[time-1][N]["hidden_state"]["c_aggregate"], j)
+		zj_probability = get_posterior_zj(j, current_c_aggregate, time)
 
 		##### lookahead. this will be support it explores further
-		#trajectory_start_support = myappend(particles[time-1][N]["hidden_state"]["c_aggregate"], j)
-		#zj_probability *= get_weight_lookahead(unique(trajectory_start_support), time)
+		zj_probability *= get_weight_lookahead(unique(current_c_aggregate),current_c_aggregate, time)
 
 		z_posterior_array_probability = myappend(z_posterior_array_probability, zj_probability)
 		z_posterior_array_cid = myappend(z_posterior_array_cid, j)
