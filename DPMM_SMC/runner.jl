@@ -16,6 +16,7 @@ type node
 	support
 	weight
 	depth
+	time
 end
 
 
@@ -33,8 +34,8 @@ hyperparameters["a"]=1;hyperparameters["b"]=1;hyperparameters["alpha"]=0.5;hyper
 const _DEBUG = 0
 data = Dict()
 
-const LOOKAHEAD_DELTA = 10 #0
-const INTEGRAL_PATHS = 200
+const LOOKAHEAD_DELTA = 0#10
+const INTEGRAL_PATHS = 50
 
 #################### DATA LOADER AND PLOTTING ##################################
 const COLORS =[[rand(),rand(),rand()] for i =1:50]
@@ -225,7 +226,7 @@ function get_posterior_zj(cid, c_aggregate,time)
 	posterior = 0
 
 	#for cid in support
-	if cid < 0#max(c_aggregate)
+	if cid <= max(c_aggregate)
 		cid_cardinality, indices = get_pts_in_cluster(c_aggregate, cid)
 		posterior += log(cid_cardinality/(total_pts + alpha)) ##prior
 		#println("[PRIOR] existing", " value:", exp(posterior), " cid:", cid)
@@ -288,7 +289,8 @@ function get_weight_lookahead(support, time)
 	PCNT = 0
 
 	DEPTH = 1
-	root = node(support, 1, DEPTH)
+	root = node(support, 1, DEPTH, time)
+	time += 1
 	enqueue!(PATH_QUEUE, root,PCNT)
 	PCNT+=1
 	DEPTH+=1
@@ -304,12 +306,11 @@ function get_weight_lookahead(support, time)
 			return weight
 		end
 
-		time = time + 1
 		current = dequeue!(PATH_QUEUE)
 		z_posterior_array_probability = []
 		z_posterior_array_cid = []
 		for j in current.support
-			zj_probability = get_posterior_zj(j, current.support, time)
+			zj_probability = get_posterior_zj(j, current.support, current.time)
 			z_posterior_array_probability = myappend(z_posterior_array_probability, zj_probability)
 			z_posterior_array_cid = myappend(z_posterior_array_cid, j)
 		end
@@ -322,11 +323,12 @@ function get_weight_lookahead(support, time)
 			else
 				child_support = copy(current.support)
 			end
-			child = node(child_support, current.weight*weight, DEPTH)
+			child = node(child_support, current.weight*weight, DEPTH, time)
 			enqueue!(PATH_QUEUE, child, PCNT)
 			PCNT+=1
 		end
 		DEPTH+=1
+		time+=1
 	end
 end
 
@@ -337,9 +339,14 @@ function path_integral(time, N)
 	
 	z_posterior_array_probability = []
 	z_posterior_array_cid = []
+	println(root_support)
 	for j in root_support
-		zj_probability = get_posterior_zj(j, particles[time-1][N]["hidden_state"], time)
-		zj_probability *= get_weight_lookahead(unique(myappend(particles[time-1][N]["hidden_state"]["c_aggregate"], j)), time)
+		zj_probability = get_posterior_zj(j, root_support, time)
+
+		##### lookahead. this will be support it explores further
+		#trajectory_start_support = myappend(particles[time-1][N]["hidden_state"]["c_aggregate"], j)
+		#zj_probability *= get_weight_lookahead(unique(trajectory_start_support), time)
+
 		z_posterior_array_probability = myappend(z_posterior_array_probability, zj_probability)
 		z_posterior_array_cid = myappend(z_posterior_array_cid, j)
 	end
