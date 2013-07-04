@@ -31,7 +31,7 @@ myappend{T}(v::Vector{T}, x::T) = [v..., x] #Appending to arrays
 const ENUMERATION = 0
 
 const NUM_PARTICLES = 1
-const LOOKAHEAD_DELTA = 3#2 with 100 		 6 works best with 500 particles
+LOOKAHEAD_DELTA = 0#2 with 100 		 6 works best with 500 particles
 const INTEGRAL_PATHS = 1#1 with 100 		 3 works best with 500 particles
 
 
@@ -363,7 +363,6 @@ function get_weight_lookahead(prev_support, prev_c_aggregate, time, prev_cid)
 	#Now we propagate t+2 onwards ... 
 	while true
 		current = dequeue!(PATH_QUEUE)
-
 		if current.depth == LOOKAHEAD_DELTA
 			#wARR = []
 			#terminate and return with weight
@@ -397,7 +396,7 @@ function path_integral(time, N)
 		zj_probability = get_posterior_zj(j, current_c_aggregate, time)
 
 		##### lookahead. this will be support it explores further
-		if time + LOOKAHEAD_DELTA < NUM_POINTS
+		if time + LOOKAHEAD_DELTA <= NUM_POINTS
 			zj_probability *= get_weight_lookahead(unique(current_c_aggregate),current_c_aggregate, time+1, j)
 		end
 
