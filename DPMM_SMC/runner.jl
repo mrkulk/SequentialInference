@@ -473,7 +473,7 @@ ari_without_lookahead = run_sampler()
 ari_with_lookahead = 0#run_sampler()
 
 if length(ARGS) > 0
-	bucket.put({"ari_without_lookahead"=>ari_without_lookahead,"ari_with_lookahead"=>ari_with_lookahead}, string(filename,".pkl"))
+	bucket.putf([ari_without_lookahead,ari_with_lookahead], string(filename,".data"))
 end
 
 end
