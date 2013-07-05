@@ -27,7 +27,7 @@ def run_on_instance(trial_id):
   import os
   os.environ['DISPLAY'] = ":1"
   print "Starting"
-  ls_output = subprocess.Popen(["/home/picloud/julia/julia", "runner.jl", str(trial_id)], str(NUM_PARTICLES), str(DELTA), str(INTEGRAL_PATHS) \
+  ls_output = subprocess.Popen(["/home/picloud/julia/julia", "runner.jl", str(trial_id), str(NUM_PARTICLES), str(DELTA), str(INTEGRAL_PATHS)], \
                                cwd = "/home/picloud/DPMixtureModel/DPMM_SMC/") #, \
                                # stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   out, err = ls_output.communicate()

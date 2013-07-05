@@ -462,9 +462,9 @@ end
 if length(ARGS) > 0
 	@pyimport cloud.bucket as bucket
 	filename = ARGS[1]
-	NUM_PARTICLES = ARGS[2]
-	DELTA = ARGS[3]
-	INTEGRAL_PATHS = ARGS[4]
+	NUM_PARTICLES = int(ARGS[2])
+	DELTA = int(ARGS[3])
+	INTEGRAL_PATHS = int(ARGS[4])
 else
 	NUM_PARTICLES = 1
 	DELTA = 10#10
