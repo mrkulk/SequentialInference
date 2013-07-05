@@ -20,8 +20,8 @@ def run_on_instance(trial_id):
   import os
   os.environ['DISPLAY'] = ":1"
   print "Starting"
-  ls_output = subprocess.Popen(["/Users/tejas/Documents/julia/julia", "runner.jl", str(trial_id)], \
-                               cwd = "/Users/tejas/Documents/MIT/Samplers/DPMixtureModel/DPMM_SMC/") #, \
+  ls_output = subprocess.Popen(["/home/picloud/julia/julia", "runner.jl", str(trial_id)], \
+                               cwd = "/home/picloud/DPMixtureModel/DPMM_SMC/") #, \
                                # stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   out, err = ls_output.communicate()
   print "Finished"
