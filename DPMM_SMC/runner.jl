@@ -476,8 +476,8 @@ end
 data = loadObservations()
 LOOKAHEAD_DELTA = 0
 ari_without_lookahead = run_sampler()
-#LOOKAHEAD_DELTA = DELTA
-ari_with_lookahead = 0#run_sampler()
+LOOKAHEAD_DELTA = DELTA
+ari_with_lookahead = run_sampler()
 
 println([ari_without_lookahead, ari_with_lookahead])
 end
