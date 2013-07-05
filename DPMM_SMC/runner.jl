@@ -474,12 +474,19 @@ end
 #println(string("NUM_PARTICLES:", NUM_PARTICLES, " DELTA:", DELTA, " INTEGRAL_PATHS:", INTEGRAL_PATHS))
 
 data = loadObservations()
-LOOKAHEAD_DELTA = 0
-ari_without_lookahead = run_sampler()
-LOOKAHEAD_DELTA = DELTA
-ari_with_lookahead = run_sampler()
+look=[]
+nolook=[]
+for i=1:10
+	LOOKAHEAD_DELTA = 0
+	ari_without_lookahead = run_sampler()
+	nolook = myappend(nolook, ari_without_lookahead)
 
-println([ari_without_lookahead, ari_with_lookahead])
+	LOOKAHEAD_DELTA = DELTA
+	ari_with_lookahead = run_sampler()
+	look = myappend(look, ari_with_lookahead)
+end
+
+print(nolook, look)
 end
 
 
