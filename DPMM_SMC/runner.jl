@@ -30,9 +30,9 @@ myappend{T}(v::Vector{T}, x::T) = [v..., x] #Appending to arrays
 
 const ENUMERATION = 0
 
-const NUM_PARTICLES = 1
-LOOKAHEAD_DELTA = 10#10
-const INTEGRAL_PATHS = 2#2
+#const NUM_PARTICLES = 1
+#LOOKAHEAD_DELTA = 10#10
+#const INTEGRAL_PATHS = 2#2
 
 
 const DIMENSIONS = 2
@@ -462,14 +462,23 @@ end
 if length(ARGS) > 0
 	@pyimport cloud.bucket as bucket
 	filename = ARGS[1]
+	NUM_PARTICLES = ARGS[2]
+	DELTA = ARGS[3]
+	INTEGRAL_PATHS = ARGS[4]
+else
+	NUM_PARTICLES = 1
+	DELTA = 10#10
+	INTEGRAL_PATHS = 2#2
 end
+
+println(string("NUM_PARTICLES:", NUM_PARTICLES, " DELTA:", DELTA, " INTEGRAL_PATHS:", INTEGRAL_PATHS))
 
 data = loadObservations()
 println("\n\nWITHOUT LOOKAHEAD:")
 LOOKAHEAD_DELTA = 0
 ari_without_lookahead = run_sampler()
 #println("\n\nWITH LOOKAHEAD:")
-#LOOKAHEAD_DELTA = 10
+#LOOKAHEAD_DELTA = DELTA
 ari_with_lookahead = 0#run_sampler()
 
 if length(ARGS) > 0
