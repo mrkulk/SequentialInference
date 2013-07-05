@@ -56,7 +56,7 @@ function plotPoints(data,fname)
 	pylab.savefig(string(fname,".png"))
 end
 
-function plotPointsfromChain(time)
+function plotPointsfromChain(time,)
 	ariArr = []
 	pylab.clf()
 	for N=1:length(particles[time])
@@ -69,7 +69,9 @@ function plotPointsfromChain(time)
 		inferred_clusters = particles[time][N]["hidden_state"]["c_aggregate"]
 		ariArr = myappend(ariArr, metrics.adjusted_rand_score(inferred_clusters, true_clusters))
 	end
-	println("time:", time," Maximum ARI: ", max(ariArr))
+	if length(ARGS) == 0
+		println("time:", time," Maximum ARI: ", max(ariArr))
+	end
 	return max(ariArr)
 end
 
@@ -460,33 +462,24 @@ end
 
 #################### MAIN RUNNER ####################
 if length(ARGS) > 0
-	@pyimport cloud.bucket as bucket
-	filename = ARGS[1]
-	NUM_PARTICLES = int(ARGS[2])
-	DELTA = int(ARGS[3])
-	INTEGRAL_PATHS = int(ARGS[4])
+	NUM_PARTICLES = int(ARGS[1])
+	DELTA = int(ARGS[2])
+	INTEGRAL_PATHS = int(ARGS[3])
 else
 	NUM_PARTICLES = 1
 	DELTA = 10#10
 	INTEGRAL_PATHS = 2#2
 end
 
-println(string("NUM_PARTICLES:", NUM_PARTICLES, " DELTA:", DELTA, " INTEGRAL_PATHS:", INTEGRAL_PATHS))
+#println(string("NUM_PARTICLES:", NUM_PARTICLES, " DELTA:", DELTA, " INTEGRAL_PATHS:", INTEGRAL_PATHS))
 
 data = loadObservations()
-println("\n\nWITHOUT LOOKAHEAD:")
 LOOKAHEAD_DELTA = 0
 ari_without_lookahead = run_sampler()
-#println("\n\nWITH LOOKAHEAD:")
 #LOOKAHEAD_DELTA = DELTA
 ari_with_lookahead = 0#run_sampler()
 
-if length(ARGS) > 0
-	bucket.putf([ari_without_lookahead,ari_with_lookahead], string(filename,".data"))
+println([ari_without_lookahead, ari_with_lookahead])
 end
-
-end
-
-
 
 

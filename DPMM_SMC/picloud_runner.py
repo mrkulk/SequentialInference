@@ -27,17 +27,16 @@ def run_on_instance(trial_id):
   import os
   os.environ['DISPLAY'] = ":1"
   print "Starting"
-  ls_output = subprocess.Popen(["/home/picloud/julia/julia", "runner.jl", str(trial_id), str(NUM_PARTICLES), str(DELTA), str(INTEGRAL_PATHS)], \
-                               cwd = "/home/picloud/DPMixtureModel/DPMM_SMC/") #, \
-                               # stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  ls_output = subprocess.Popen(["/Users/tejas/Documents/julia/julia", "runner.jl", str(NUM_PARTICLES), str(DELTA), str(INTEGRAL_PATHS)], \
+                               cwd = "/Users/tejas/Documents/MIT/Samplers/DPMixtureModel/DPMM_SMC/", \
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   out, err = ls_output.communicate()
-  print "Finished"
   return out
  
-#result = run_on_instance(1)  
+#result = run_on_instance([1])  
 
 jids = cloud.map(run_on_instance, range(TRIALS), _env=cloud_environment, _type='c2', _cores=1)
 print jids
 result = cloud.result(jids)
 
-print result
+print "RESULT:", result
