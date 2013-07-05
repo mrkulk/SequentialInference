@@ -70,6 +70,7 @@ function plotPointsfromChain(time)
 		ariArr = myappend(ariArr, metrics.adjusted_rand_score(inferred_clusters, true_clusters))
 	end
 	println("time:", time," Maximum ARI: ", max(ariArr))
+	return max(ariArr)
 end
 
 
@@ -450,7 +451,7 @@ function run_sampler()
 		recycle(time)
 		#println(particles)
 		if mod(time, NUM_POINTS) == 0
-			plotPointsfromChain(time)
+			return plotPointsfromChain(time)
 		end
 	end
 
@@ -458,16 +459,22 @@ end
 
 
 #################### MAIN RUNNER ####################
+if length(ARGS) > 0
+	@pyimport cloud.bucket as bucket
+	filename = ARGS[1]
+end
+
 data = loadObservations()
 println("\n\nWITHOUT LOOKAHEAD:")
 LOOKAHEAD_DELTA = 0
-run_sampler()
-println("\n\nWITH LOOKAHEAD:")
-LOOKAHEAD_DELTA = 10
-run_sampler()
+ari_without_lookahead = run_sampler()
+#println("\n\nWITH LOOKAHEAD:")
+#LOOKAHEAD_DELTA = 10
+ari_with_lookahead = 0#run_sampler()
 
-
-
+if length(ARGS) > 0
+	bucket.put({"ari_without_lookahead"=>ari_without_lookahead,"ari_with_lookahead"=>ari_with_lookahead}, string(filename,".pkl"))
+end
 
 end
 
