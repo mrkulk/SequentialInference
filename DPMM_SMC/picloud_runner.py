@@ -1,5 +1,6 @@
 
 import sys
+import pickle
 
 import cloud
 cloud.setkey(7513, api_secretkey='ca43a3535fa17e28b687f0f1691c67db261392ae')
@@ -38,5 +39,5 @@ def run_on_instance(trial_id):
 jids = cloud.map(run_on_instance, range(TRIALS), _env=cloud_environment, _type='c2', _cores=1)
 print jids
 result = cloud.result(jids)
-
+pickle.dump(result, open("result.pkl","wb"))
 print "RESULT:", result
