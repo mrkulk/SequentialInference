@@ -427,9 +427,11 @@ function run_sampler()
 
 	for time = 2:NUM_POINTS
 
-		#println("##################")
-		#println("time: ", time)
-		
+		if length(ARGS) == 0
+			println("##################")
+			println("time: ", time)
+		end
+
 		###### PARTICLE CREATION and EVOLUTION #######
 		particles[time]=Dict()
 
@@ -466,27 +468,20 @@ if length(ARGS) > 0
 	DELTA = int(ARGS[2])
 	INTEGRAL_PATHS = int(ARGS[3])
 else
-	NUM_PARTICLES = 1
-	DELTA = 10#10
-	INTEGRAL_PATHS = 2#2
+	NUM_PARTICLES = 50#1
+	DELTA = 3#10
+	INTEGRAL_PATHS = 1#2
 end
 
 #println(string("NUM_PARTICLES:", NUM_PARTICLES, " DELTA:", DELTA, " INTEGRAL_PATHS:", INTEGRAL_PATHS))
 
 data = loadObservations()
-look=[]
-nolook=[]
-for i=1:10
-	LOOKAHEAD_DELTA = 0
-	ari_without_lookahead = run_sampler()
-	nolook = myappend(nolook, ari_without_lookahead)
+LOOKAHEAD_DELTA = 0
+ari_without_lookahead = run_sampler()
+LOOKAHEAD_DELTA = DELTA
+ari_with_lookahead = run_sampler()
 
-	LOOKAHEAD_DELTA = DELTA
-	ari_with_lookahead = run_sampler()
-	look = myappend(look, ari_with_lookahead)
-end
-
-print(nolook, look)
+print([ari_without_lookahead, ari_with_lookahead])
 end
 
 
