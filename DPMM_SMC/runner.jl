@@ -31,12 +31,12 @@ myappend{T}(v::Vector{T}, x::T) = [v..., x] #Appending to arrays
 const ENUMERATION = 0
 
 const NUM_PARTICLES = 1
-LOOKAHEAD_DELTA = 0#2 with 100 		 6 works best with 500 particles
-const INTEGRAL_PATHS = 1#1 with 100 		 3 works best with 500 particles
+LOOKAHEAD_DELTA = 10#10
+const INTEGRAL_PATHS = 2#2
 
 
 const DIMENSIONS = 2
-NUM_POINTS = 200
+NUM_POINTS = 100
 state = Dict()
 particles = Dict()
 hyperparameters = Dict()
@@ -105,7 +105,7 @@ end
 
 function loadObservations()
 	data = Dict()
-	mu,std,mixture_weights = dataset1()
+	mu,std,mixture_weights = dataset2()
 	data["c_aggregate"] = zeros(NUM_POINTS)
 
 	data["get_data_arr"] = Dict()
@@ -424,8 +424,9 @@ function run_sampler()
 
 	for time = 2:NUM_POINTS
 
-		println("##################")
-		println("time: ", time)
+		#println("##################")
+		#println("time: ", time)
+		
 		###### PARTICLE CREATION and EVOLUTION #######
 		particles[time]=Dict()
 
@@ -448,7 +449,7 @@ function run_sampler()
 		resample(time)
 		recycle(time)
 		#println(particles)
-		if mod(time, 1) == 0
+		if mod(time, NUM_POINTS) == 0
 			plotPointsfromChain(time)
 		end
 	end
@@ -458,7 +459,14 @@ end
 
 #################### MAIN RUNNER ####################
 data = loadObservations()
+println("\n\nWITHOUT LOOKAHEAD:")
+LOOKAHEAD_DELTA = 0
 run_sampler()
+println("\n\nWITH LOOKAHEAD:")
+LOOKAHEAD_DELTA = 10
+run_sampler()
+
+
 
 
 end
