@@ -18,15 +18,6 @@ using NumericExtensions
 @pyimport pylab
 @pyimport sklearn.metrics as metrics
 
-type node
-	support
-	weight
-	depth
-	time
-	prev_c_aggregate
-	lambda_kw
-end
-
 
 @debug begin 
 
@@ -42,7 +33,7 @@ const ENUMERATION = 0
 
 
 WORDS_PER_DOC = 1000
-NUM_DOCS = 100
+NUM_DOCS = 1000
 NUM_TOPICS = NaN
 V = NaN
 state = Dict()
@@ -233,21 +224,24 @@ end
 
 
 
-function existing_topic_posterior_helper(time, N, eta, topic)
+function existing_topic_posterior_helper(time, N, eta, topic, lookahead, prev_lambda)
 
-	state = particles[time-1][N]["hidden_state"]
+	if lookahead == 0
+		state = particles[time-1][N]["hidden_state"]
+		particles[time][N]["hidden_state"]["cache_topics"][topic] = Dict()
+	else
+		state = Dict(); state["lambda"] = prev_lambda
+	end	
 
-	particles[time][N]["hidden_state"]["cache_topics"][topic] = Dict()
-	
 	#println( particles[time-1][N]["hidden_state"]["cache_topics"])
-
+	lambda_kw = NaN
 	numerator1 = 0; tmp_denominator1 = 0; #this is first side page 5 from Chong et al
 	numerator2 = 0; tmp_denominator2 = 0; #this is second side page 5 from Chong et al
 	denominator1 = 0;
 
 	words_in_this_doc = collect(values(data[time]))
 
-	for word = 1:V#for word in collect(keys(state["lambda"][topic]))
+	for word = 1:V
 		indices = findin(words_in_this_doc, word)
 		
 		tmp=length(indices)
@@ -256,23 +250,29 @@ function existing_topic_posterior_helper(time, N, eta, topic)
 
 		tmp_denominator2 += state["lambda"][topic][word]
 		denominator1 += lgamma(state["lambda"][topic][word])
-		particles[time][N]["hidden_state"]["cache_topics"][topic][word] = numerator2_tmp
+
+		if lookahead == 0
+			particles[time][N]["hidden_state"]["cache_topics"][topic][word] = numerator2_tmp
+		else
+			lambda_kw[topic][word] = numerator2_tmp
+		end
+
 	end
 
 	numerator1 = lgamma(tmp_denominator2)
 	denominator2 = lgamma(tmp_denominator2 + length(data[time]))
 
 	#println("[[[[OLD]]]]:", numerator1,"  ||  ", denominator1,"  ||  ",  numerator2,"  ||  ",  denominator2)
-	lambda_kw = copy(particles[time][N]["hidden_state"]["cache_topics"])
 
 	return (numerator1+numerator2) - (denominator1+denominator2), lambda_kw
 end
 
 
-function get_posterior_zj(cid, c_aggregate,time, N, root_support)
+function get_posterior_zj(cid, c_aggregate,time, N, root_support, lookahead, prev_lambda_kw)
 
 	eta = hyperparameters["eta"]; alpha=hyperparameters["a"]; total_pts = time
 	posterior = 0
+	lambda_kw = NaN
 
 	new_cluster_flag = 0
 	if cid < max(root_support)
@@ -304,14 +304,20 @@ function get_posterior_zj(cid, c_aggregate,time, N, root_support)
 
 		#println("[[[[NEW]]]]:", numerator1,"  ||  ",  denominator1,"  ||  ",  numerator2,"  ||  ", denominator2)
 
-		## create new lambda ##
-		particles[time][N]["hidden_state"]["lambda"][cid] = Dict()
-		for word = 1:V
-			particles[time][N]["hidden_state"]["lambda"][cid][word] = hyperparameters["eta"]
+		if lookahead == 0
+			## create new lambda ##
+			particles[time][N]["hidden_state"]["lambda"][cid] = Dict()
+			for word = 1:V
+				particles[time][N]["hidden_state"]["lambda"][cid][word] = hyperparameters["eta"]
+			end
+		else
+			lambda_kw = Dict(); lambda_kw[cid] = Dict();
+			for word = 1:V
+				lambda_kw[cid][word] = hyperparameters["eta"]
+			end
 		end
-		lambda_kw = copy(particles[time][N]["hidden_state"]["lambda"])
 	else #existing cluster
-		_posterior, lambda_kw = existing_topic_posterior_helper(time, N,eta,cid)
+		_posterior, lambda_kw = existing_topic_posterior_helper(time, N,eta,cid, lookahead, prev_lambda_kw)
 		posterior += _posterior
 	end
 
@@ -333,7 +339,7 @@ function path_integral(time, N)
 
 	for j in root_support
 		current_c_aggregate = myappend(particles[time-1][N]["hidden_state"]["c_aggregate"], j)
-		zj_probability, lambda_kw = get_posterior_zj(j, current_c_aggregate, time, N, root_support)
+		zj_probability, lambda_kw = get_posterior_zj(j, current_c_aggregate, time, N, root_support, 0, NaN)
 
 		##### lookahead. this will be support it explores further
 		#if time + LOOKAHEAD_DELTA <= NUM_POINTS
