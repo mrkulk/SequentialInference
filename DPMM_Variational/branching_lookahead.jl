@@ -9,6 +9,8 @@ type node
 	prev_lambda_kw
 end
 
+using Debug
+@debug begin 
 
 function pickNewChildren(current, z_posterior_array_probability, z_posterior_array_cid, lambda_kw_arr, PATH_QUEUE, PCNT)
 	# Now choose 'p' children and add to queue
@@ -23,13 +25,14 @@ function pickNewChildren(current, z_posterior_array_probability, z_posterior_arr
 			child_support = unique(myappend(current.support, z_posterior_array_cid[ind]))
 			child_c_aggregate = myappend(current.prev_c_aggregate, z_posterior_array_cid[ind])
 			weight = z_posterior_array_probability[ind]
-			child = node(unique(child_support), current.weight*weight, DEPTH+1, time+1, child_c_aggregate)
+			child = node(unique(child_support), current.weight+weight, DEPTH+1, time+1, child_c_aggregate)
 			enqueue!(PATH_QUEUE, child, PCNT)
 			PCNT+=1
 		end
 	else 
 		for p=1:INTEGRAL_PATHS
-			weight, sampled_cid = sampled_cid(z_posterior_array_probability, z_posterior_array_cid)
+
+			weight, sampled_cid = sample_cid(z_posterior_array_probability, z_posterior_array_cid)
 			if sampled_cid == max(current.support)
 				child_support = myappend(current.support, sampled_cid+1)
 			else
@@ -39,7 +42,7 @@ function pickNewChildren(current, z_posterior_array_probability, z_posterior_arr
 			end
 			# Adding cluster for each data point until current time for child
 			child_c_aggregate = myappend(current.prev_c_aggregate, sampled_cid)
-			child = node(unique(child_support), current.weight*weight, DEPTH+1, time+1, child_c_aggregate, lambda_kw_arr[sampled_cid])
+			child = node(unique(child_support), current.weight+weight, DEPTH+1, time+1, child_c_aggregate, lambda_kw_arr[sampled_cid])
 			enqueue!(PATH_QUEUE, child, PCNT)
 			PCNT+=1
 		end
@@ -55,12 +58,12 @@ function generateCandidateChildren(current_support, time, prev_c_aggregate, N, p
 	for j in current_support
 		current_c_aggregate = myappend(prev_c_aggregate, j)
 		zj_probability, lambda_kw = get_posterior_zj(j, current_c_aggregate, time, N, current_support, 1,prev_lambda_kw)
-
 		lambda_kw_arr = myappend(lambda_kw_arr, lambda_kw)
 
 		z_posterior_array_probability = myappend(z_posterior_array_probability, zj_probability)
 		z_posterior_array_cid = myappend(z_posterior_array_cid, j)
 	end
+	println("L [time:",time,"]", " ", z_posterior_array_probability)
 	return z_posterior_array_probability, z_posterior_array_cid, lambda_kw_arr
 end
 
@@ -81,8 +84,14 @@ function get_weight_lookahead(prev_support, prev_c_aggregate, time, prev_cid, N,
 	else
 		t_1_support = copy(prev_support)
 	end
+
+	#if time == 6
+	#	@bp
+	#end
+
 	z_posterior_array_probability, z_posterior_array_cid, lambda_kw_arr = generateCandidateChildren(t_1_support, time, prev_c_aggregate, N, prev_lambda_kw)
 	current = node(t_1_support, 1, 1, time, prev_c_aggregate, prev_lambda_kw)
+
 	PATH_QUEUE, PCNT = pickNewChildren(current, z_posterior_array_probability, z_posterior_array_cid, lambda_kw_arr, PATH_QUEUE, PCNT)
 
 	#Now we propagate t+2 onwards ... 
@@ -91,19 +100,23 @@ function get_weight_lookahead(prev_support, prev_c_aggregate, time, prev_cid, N,
 		if current.depth == LOOKAHEAD_DELTA
 			#wARR = []
 			#terminate and return with weight
-			weight = current.weight
+			weight = exp(current.weight)
 			#wARR = myappend(wARR, weight)
 			while length(PATH_QUEUE) > 0 
 				elm = dequeue!(PATH_QUEUE)
 				if elm.depth != LOOKAHEAD_DELTA
-					return weight
+					return log(weight)
 				end
-				weight += elm.weight
+				weight += exp(elm.weight)
 				#wARR = myappend(wARR, elm.weight)
 			end
-			return weight
+			return log(weight)
 		end
-		z_posterior_array_probability, z_posterior_array_cid = generateCandidateChildren(current.support, current.time, current.prev_c_aggregate, N, current.prev_lambda_kw)		
-		PATH_QUEUE, PCNT = pickNewChildren(current, z_posterior_array_probability, z_posterior_array_cid, PATH_QUEUE, PCNT)
+		z_posterior_array_probability, z_posterior_array_cid, lambda_kw_arr = generateCandidateChildren(current.support, current.time, current.prev_c_aggregate, N, current.prev_lambda_kw)		
+		println(length(z_posterior_array_probability))
+		PATH_QUEUE, PCNT = pickNewChildren(current, z_posterior_array_probability, z_posterior_array_cid, lambda_kw_arr, PATH_QUEUE, PCNT)
 	end
+end
+
+
 end

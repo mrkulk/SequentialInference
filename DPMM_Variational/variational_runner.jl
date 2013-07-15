@@ -33,7 +33,7 @@ const ENUMERATION = 0
 
 
 WORDS_PER_DOC = 1000
-NUM_DOCS = 1000
+NUM_DOCS = 100
 NUM_TOPICS = NaN
 V = NaN
 state = Dict()
@@ -43,7 +43,7 @@ hyperparameters["eta"]=0.5;hyperparameters["a"]=1;
 const _DEBUG = 0
 data = Dict()
 
-#srand(1)
+srand(1)
 
 
 #################### DATA LOADER AND PLOTTING ##################################
@@ -208,11 +208,12 @@ end
 
 function sample_cid(z_posterior_array_probability, z_posterior_array_cid)
 	normalizing_constant = logsumexp(z_posterior_array_probability)
-	z_posterior_array_probability -= normalizing_constant
-	z_posterior_array_probability = exp(z_posterior_array_probability)
 
-	#println(z_posterior_array_probability)
-	sample_arr = rand(Multinomial(1,z_posterior_array_probability))
+	EXP_z_posterior_array_probability = copy(z_posterior_array_probability)
+	EXP_z_posterior_array_probability -= normalizing_constant
+	EXP_z_posterior_array_probability = exp(EXP_z_posterior_array_probability)
+
+	sample_arr = rand(Multinomial(1,EXP_z_posterior_array_probability))
 	indx = findin(sample_arr, 1)[1]
 	cid = z_posterior_array_cid[indx]
 	weight = z_posterior_array_probability[indx]
@@ -226,25 +227,36 @@ end
 
 function existing_topic_posterior_helper(time, N, eta, topic, lookahead, prev_lambda)
 
+	lambda_kw = NaN
+
 	if lookahead == 0
 		state = particles[time-1][N]["hidden_state"]
 		particles[time][N]["hidden_state"]["cache_topics"][topic] = Dict()
 	else
+		lambda_kw = copy(prev_lambda)
 		state = Dict(); state["lambda"] = prev_lambda
 	end	
 
 	#println( particles[time-1][N]["hidden_state"]["cache_topics"])
-	lambda_kw = NaN
+
+
 	numerator1 = 0; tmp_denominator1 = 0; #this is first side page 5 from Chong et al
 	numerator2 = 0; tmp_denominator2 = 0; #this is second side page 5 from Chong et al
 	denominator1 = 0;
 
 	words_in_this_doc = collect(values(data[time]))
 
+	#println("\n\n",lookahead, "--", topic, " | ", state["lambda"])
+	
+	#if haskey(state["lambda"][topic], topic) == false
+	#	@bp
+	#end
+
 	for word = 1:V
 		indices = findin(words_in_this_doc, word)
 		
 		tmp=length(indices)
+
 		numerator2_tmp = state["lambda"][topic][word] + tmp
 		numerator2 += lgamma(numerator2_tmp)
 
@@ -253,6 +265,7 @@ function existing_topic_posterior_helper(time, N, eta, topic, lookahead, prev_la
 
 		if lookahead == 0
 			particles[time][N]["hidden_state"]["cache_topics"][topic][word] = numerator2_tmp
+			#lambda_kw = copy(particles[time][N]["hidden_state"]["cache_topics"])
 		else
 			lambda_kw[topic][word] = numerator2_tmp
 		end
@@ -310,8 +323,9 @@ function get_posterior_zj(cid, c_aggregate,time, N, root_support, lookahead, pre
 			for word = 1:V
 				particles[time][N]["hidden_state"]["lambda"][cid][word] = hyperparameters["eta"]
 			end
+			lambda_kw = copy(particles[time][N]["hidden_state"]["lambda"])
 		else
-			lambda_kw = Dict(); lambda_kw[cid] = Dict();
+			lambda_kw = copy(prev_lambda_kw); lambda_kw[cid]=Dict()
 			for word = 1:V
 				lambda_kw[cid][word] = hyperparameters["eta"]
 			end
@@ -336,15 +350,16 @@ function path_integral(time, N)
 	z_posterior_array_probability = []
 	z_posterior_array_cid = []
 
-
 	for j in root_support
 		current_c_aggregate = myappend(particles[time-1][N]["hidden_state"]["c_aggregate"], j)
 		zj_probability, lambda_kw = get_posterior_zj(j, current_c_aggregate, time, N, root_support, 0, NaN)
 
 		##### lookahead. this will be support it explores further
-		#if time + LOOKAHEAD_DELTA <= NUM_POINTS
-		#	zj_probability *= get_weight_lookahead(unique(current_c_aggregate),current_c_aggregate, time+1, j, N, lambda_kw)
-		#end
+		if time + LOOKAHEAD_DELTA <= NUM_DOCS
+			zj_probability_lookahead = get_weight_lookahead(unique(current_c_aggregate),current_c_aggregate, time+1, j, N, copy(particles[time][N]["hidden_state"]["lambda"]))
+			#println(time, " > ", zj_probability_lookahead, zj_probability)
+			zj_probability += zj_probability_lookahead
+		end
 
 		z_posterior_array_probability = myappend(z_posterior_array_probability, zj_probability)
 		z_posterior_array_cid = myappend(z_posterior_array_cid, j)
@@ -438,15 +453,15 @@ if length(ARGS) > 0
 	INTEGRAL_PATHS = int(ARGS[3])
 else
 	NUM_PARTICLES = 1#1
-	DELTA = 3#10
-	INTEGRAL_PATHS = 1#2
+	DELTA = 3
+	INTEGRAL_PATHS = 2
 end
 
 #println(string("NUM_PARTICLES:", NUM_PARTICLES, " DELTA:", DELTA, " INTEGRAL_PATHS:", INTEGRAL_PATHS))
 
 data = loadObservations()
 
-LOOKAHEAD_DELTA = 0
+LOOKAHEAD_DELTA = DELTA
 ari_without_lookahead = run_sampler()
 #LOOKAHEAD_DELTA = DELTA
 #ari_with_lookahead = run_sampler()
