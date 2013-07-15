@@ -55,7 +55,7 @@ end
 
 
 
-function get_weight_lookahead(prev_support, prev_c_aggregate, time, prev_cid, N)
+function get_weight_lookahead(prev_support, prev_c_aggregate, time, prev_cid, N, lambda_kw)
 	
 	if LOOKAHEAD_DELTA == 0
 		return 1

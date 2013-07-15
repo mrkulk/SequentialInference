@@ -42,7 +42,7 @@ const ENUMERATION = 0
 
 
 WORDS_PER_DOC = 1000
-NUM_DOCS = 1000
+NUM_DOCS = 100
 NUM_TOPICS = NaN
 V = NaN
 state = Dict()
@@ -263,7 +263,9 @@ function existing_topic_posterior_helper(time, N, eta, topic)
 	denominator2 = lgamma(tmp_denominator2 + length(data[time]))
 
 	#println("[[[[OLD]]]]:", numerator1,"  ||  ", denominator1,"  ||  ",  numerator2,"  ||  ",  denominator2)
-	return (numerator1+numerator2) - (denominator1+denominator2)
+	lambda_kw = copy(particles[time][N]["hidden_state"]["cache_topics"])
+
+	return (numerator1+numerator2) - (denominator1+denominator2), lambda_kw
 end
 
 
@@ -307,14 +309,15 @@ function get_posterior_zj(cid, c_aggregate,time, N, root_support)
 		for word = 1:V
 			particles[time][N]["hidden_state"]["lambda"][cid][word] = hyperparameters["eta"]
 		end
-
+		lambda_kw = copy(particles[time][N]["hidden_state"]["lambda"])
 	else #existing cluster
-		posterior += existing_topic_posterior_helper(time, N,eta,cid)
+		_posterior, lambda_kw = existing_topic_posterior_helper(time, N,eta,cid)
+		posterior += _posterior
 	end
 
 	#println("[POSTERIOR] ", posterior , " v:", exp(posterior), " cid:", cid)
 	#println("\n")
-	return posterior
+	return posterior, lambda_kw
 
 end
 
@@ -330,11 +333,11 @@ function path_integral(time, N)
 
 	for j in root_support
 		current_c_aggregate = myappend(particles[time-1][N]["hidden_state"]["c_aggregate"], j)
-		zj_probability = get_posterior_zj(j, current_c_aggregate, time, N, root_support)
+		zj_probability, lambda_kw = get_posterior_zj(j, current_c_aggregate, time, N, root_support)
 
 		##### lookahead. this will be support it explores further
 		#if time + LOOKAHEAD_DELTA <= NUM_POINTS
-		#	zj_probability *= get_weight_lookahead(unique(current_c_aggregate),current_c_aggregate, time+1, j, N)
+		#	zj_probability *= get_weight_lookahead(unique(current_c_aggregate),current_c_aggregate, time+1, j, N, lambda_kw)
 		#end
 
 		z_posterior_array_probability = myappend(z_posterior_array_probability, zj_probability)
