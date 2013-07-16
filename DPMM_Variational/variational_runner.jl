@@ -33,7 +33,7 @@ const ENUMERATION = 0
 
 
 WORDS_PER_DOC = 1000
-NUM_DOCS = 10
+NUM_DOCS = 200
 NUM_TOPICS = NaN
 V = NaN
 state = Dict()
@@ -128,7 +128,7 @@ function FC_resample(time)
 	weight_vector = [s["weight"] for s in values(particles[time])]
 	weight_vector = float64(weight_vector)
 	particles_new_indx = int(zeros(length(particles[time])))
-	particles_temporary = copy(particles[time])
+	particles_temporary = deepcopy(particles[time])
 
 	particles[time] = Dict() ##?? 
 
@@ -150,7 +150,7 @@ function resample(time)
 	weight_vector = [s["weight"] for s in values(particles[time])]
 	weight_vector = float64(weight_vector)
 	particles_new_indx = int(zeros(length(particles[time])))
-	particles_temporary = copy(particles[time])
+	particles_temporary = deepcopy(particles[time])
 	
 	particles[time] = Dict() ##?? 
 
@@ -209,7 +209,7 @@ end
 function sample_cid(z_posterior_array_probability, z_posterior_array_cid)
 	normalizing_constant = logsumexp(z_posterior_array_probability)
 
-	EXP_z_posterior_array_probability = copy(z_posterior_array_probability)
+	EXP_z_posterior_array_probability = deepcopy(z_posterior_array_probability)
 	EXP_z_posterior_array_probability -= normalizing_constant
 	EXP_z_posterior_array_probability = exp(EXP_z_posterior_array_probability)
 
@@ -229,11 +229,11 @@ function existing_topic_posterior_helper(time, N, eta, topic, lookahead, prev_la
 
 	if lookahead == 0
 		state = particles[time-1][N]["hidden_state"]
-		lambda_kw = copy(state["lambda"]);
+		lambda_kw = deepcopy(state["lambda"]);
 		lambda_kw[topic] = Dict();
 		particles[time][N]["hidden_state"]["cache_topics"][topic] = Dict()
 	else
-		lambda_kw = copy(prev_lambda)
+		lambda_kw = deepcopy(prev_lambda)
 		state = Dict(); state["lambda"] = prev_lambda
 	end	
 
@@ -265,7 +265,7 @@ function existing_topic_posterior_helper(time, N, eta, topic, lookahead, prev_la
 
 		if lookahead == 0
 			particles[time][N]["hidden_state"]["cache_topics"][topic][word] = numerator2_tmp
-			lambda_kw[topic][word] = numerator2_tmp
+			lambda_kw[topic][word] = deepcopy(numerator2_tmp)
 		else
 			lambda_kw[topic][word] = numerator2_tmp
 		end
@@ -304,10 +304,12 @@ function get_posterior_zj(cid, c_aggregate,time, N, root_support, lookahead, pre
 		denominator1 = V*lgamma(eta)
 		posterior += numerator1 - denominator1 
 		numerator2 = 0;
+		wordArr = zeros(V)
 		for word = 1:V
 			words_in_this_doc = collect(values(data[time]))
 			indices = findin(words_in_this_doc, word)
 			tmp=length(indices)
+			wordArr[word] = tmp
 			numerator2 += lgamma(eta + tmp)
 		end
 		denominator2 = lgamma(eta*V + length(data[time]))
@@ -318,19 +320,19 @@ function get_posterior_zj(cid, c_aggregate,time, N, root_support, lookahead, pre
 		#println("[[[[NEW]]]]:", numerator1,"  ||  ",  denominator1,"  ||  ",  numerator2,"  ||  ", denominator2)
 
 		if lookahead == 0
-			lambda_kw = copy(particles[time-1][N]["hidden_state"]["lambda"])
+			lambda_kw = deepcopy(particles[time-1][N]["hidden_state"]["lambda"])
 			## create new lambda ##
 			particles[time][N]["hidden_state"]["lambda"][cid] = Dict()
 			lambda_kw[cid]=Dict()
 			for word = 1:V
 				particles[time][N]["hidden_state"]["lambda"][cid][word] = hyperparameters["eta"]
-				lambda_kw[cid][word]=hyperparameters["eta"]
+				lambda_kw[cid][word]=hyperparameters["eta"] + wordArr[word]
 			end
 		else
-			lambda_kw = Dict();#copy(prev_lambda_kw);  #### TEJASK: CHECK AGAIN
+			lambda_kw = deepcopy(prev_lambda_kw);  #### TEJASK: CHECK AGAIN
 			lambda_kw[cid]=Dict()
 			for word = 1:V
-				lambda_kw[cid][word] = hyperparameters["eta"]
+				lambda_kw[cid][word] = hyperparameters["eta"] + wordArr[word]
 			end
 		end
 	else #existing cluster
@@ -353,20 +355,22 @@ function path_integral(time, N)
 	z_posterior_array_probability = []
 	z_posterior_array_cid = []
 
-	println("SUPPORT:" , root_support)
+	#println("SUPPORT:" , root_support)
 
 	for j in root_support
 		current_c_aggregate = myappend(particles[time-1][N]["hidden_state"]["c_aggregate"], j)
 		zj_probability, lambda_kw = get_posterior_zj(j, current_c_aggregate, time, N, root_support, 0, NaN)
 
-		println("time:",time, " j:", j, "[c_agg:]", current_c_aggregate ," LAMBDA:",lambda_kw)
-
+		#println("[BEFORE STATS]: ", lambda_kw)
 		##### lookahead. this will be support it explores further
-		"""if time + LOOKAHEAD_DELTA <= NUM_DOCS
-			zj_probability_lookahead = get_weight_lookahead(unique(current_c_aggregate),current_c_aggregate, time+1, j, N, copy(lambda_kw))#, copy(particles[time][N]["hidden_state"]["lambda"]))
-			#println(time, " > ", zj_probability_lookahead, zj_probability)
-			zj_probability += zj_probability_lookahead
-		end"""
+		if time + LOOKAHEAD_DELTA <= NUM_DOCS
+			new_lambda_kw = deepcopy(lambda_kw)
+			zj_probability_lookahead = get_weight_lookahead(zj_probability, unique(current_c_aggregate),current_c_aggregate, time+1, j, N, new_lambda_kw)#, copy(particles[time][N]["hidden_state"]["lambda"]))
+			
+			#println("time:",time, " j:", j, "[c_agg:]", current_c_aggregate ," probability:",zj_probability, " newprobability:", zj_probability_lookahead)
+			zj_probability = zj_probability_lookahead
+		end
+		#println("[AFTER STATS]: ", lambda_kw)
 
 		z_posterior_array_probability = myappend(z_posterior_array_probability, zj_probability)
 		z_posterior_array_cid = myappend(z_posterior_array_cid, j)
@@ -427,7 +431,7 @@ function run_sampler()
 
 			particles[time][N] = Dict(); 
 			particles[time][N]["hidden_state"] = Dict();
-			particles[time][N]["hidden_state"]["lambda"] = copy(particles[time-1][N]["hidden_state"]["lambda"])
+			particles[time][N]["hidden_state"]["lambda"] = deepcopy(particles[time-1][N]["hidden_state"]["lambda"])
 			particles[time][N]["hidden_state"]["cache_topics"]=Dict();
 
 			particles[time][N]["weight"], sampled_cid = path_integral(time,N)
@@ -437,7 +441,7 @@ function run_sampler()
 			end
 			### Delete remaining cache_topics for other than sampled_cid later.  [[TODO]]
 
-			println("[[CHOSEN]] sampled_cid:",sampled_cid, " LAMBDA:", particles[time][N]["hidden_state"]["lambda"])
+			##println("[[CHOSEN]] sampled_cid:",sampled_cid, " LAMBDA:", particles[time][N]["hidden_state"]["lambda"])
 
 			particles[time][N]["hidden_state"]["c"] = sampled_cid
 			particles[time][N]["hidden_state"]["c_aggregate"] = myappend(particles[time-1][N]["hidden_state"]["c_aggregate"], sampled_cid)
@@ -462,7 +466,7 @@ if length(ARGS) > 0
 	INTEGRAL_PATHS = int(ARGS[3])
 else
 	NUM_PARTICLES = 1#1
-	DELTA = 2 #1 will return without lookahead
+	DELTA = 3 #1 will return without lookahead
 	INTEGRAL_PATHS = 2
 end
 
