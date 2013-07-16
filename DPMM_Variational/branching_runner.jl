@@ -34,7 +34,7 @@ const ENUMERATION = 0
 #const INTEGRAL_PATHS = 2#2
 
 
-WORDS_PER_DOC = 1000
+WORDS_PER_DOC = 10
 NUM_DOCS = 200
 NUM_TOPICS = NaN
 V = NaN
@@ -327,7 +327,7 @@ function get_posterior_zj(cid, c_aggregate,time, N, root_support, lookahead, pre
 			particles[time][N]["hidden_state"]["lambda"][cid] = Dict()
 			lambda_kw[cid]=Dict()
 			for word = 1:V
-				particles[time][N]["hidden_state"]["lambda"][cid][word] = hyperparameters["eta"]
+				particles[time][N]["hidden_state"]["lambda"][cid][word] = hyperparameters["eta"] + wordArr[word]
 				lambda_kw[cid][word]=hyperparameters["eta"] + wordArr[word]
 			end
 		else
@@ -468,7 +468,7 @@ if length(ARGS) > 0
 	INTEGRAL_PATHS = int(ARGS[3])
 else
 	NUM_PARTICLES = 1#1
-	DELTA = 3 #1 will return without lookahead
+	DELTA = 0 #1 will return without lookahead
 	INTEGRAL_PATHS = 2
 end
 
