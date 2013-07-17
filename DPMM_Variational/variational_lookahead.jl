@@ -1,11 +1,14 @@
 #Variational Lookahead 
 #Ardavan Saeedi & Tejas Kulkarni
+using Debug
+@debug begin 
 
 
-function sample_q_variational(j, current_support, time, N, max_support_value, soft_lambda, soft_u,soft_v, data)
+function sample_q_variational(cid, current_support, time, N, max_support_value, soft_lambda, soft_u,soft_v, data)
 	eta = hyperparameters["eta"]
+	posterior = 0
 
-	if j == max_support_value #new cluster
+	if cid == max_support_value #new cluster
 		numerator1 = lgamma(eta*V)
 		denominator1 = V*lgamma(eta)
 		posterior += numerator1 - denominator1 
@@ -28,8 +31,12 @@ function sample_q_variational(j, current_support, time, N, max_support_value, so
 		end
 
 	else #existing cluster
+		numerator1 = 0; tmp_denominator1 = 0; #this is first side page 5 from Chong et al
+		numerator2 = 0; tmp_denominator2 = 0; #this is second side page 5 from Chong et al
+		denominator1 = 0;
 		words_in_this_doc = collect(values(data[time]))
 		wordArr = zeros(V)
+		
 		for word = 1:V
 			indices = findin(words_in_this_doc, word)
 			tmp=length(indices)
@@ -46,10 +53,10 @@ function sample_q_variational(j, current_support, time, N, max_support_value, so
 		denominator2 = lgamma(tmp_denominator2 + length(data[time]))
 		posterior = (numerator1+numerator2) - (denominator1+denominator2)
 
-		for k=1:j-1
+		for k=1:cid-1
 			posterior += log(soft_v[k]) - log(soft_v[k] + soft_u[k])
 		end
-		posterior += log(soft_u[j]) - log(soft_u[j]+soft_v[j])
+		posterior += log(soft_u[cid]) - log(soft_u[cid]+soft_v[cid])
 	end
 
 	return posterior
@@ -67,15 +74,15 @@ end
 
 
 
-function update_statistics(current_support, z_posterior_array_probability, posterior,cid, data, time, soft_lambda, soft_u, soft_v)
+function update_statistics(current_support, z_posterior_array_probability, z_posterior_array_cid,  posterior,cid, data, time, soft_lambda, soft_u, soft_v)
 	posterior = 1
 	wordArr = getWordArr(data, time)
 	EXP_z_posterior_array_probability = get_normalized_probabilities(z_posterior_array_probability)
-	eta = hyperparameters["eta"]; a=hyperparameters["a"]
+	eta = hyperparameters["eta"]; alpha=hyperparameters["a"]
 
 	max_cid = max(current_support)
 	
-	for j in root_support 
+	for j in current_support 
 		is_new_cid = false
 		if j == max_cid
 			is_new_cid = true
@@ -126,6 +133,7 @@ function update_statistics(current_support, z_posterior_array_probability, poste
 				soft_u[j] = soft_u[j] + LRATE*(-soft_u[j] + 1)
 				soft_v[j] = soft_v[j] + LRATE*(-soft_v[j] + hyperparameters["a"])
 			end
+		end
 	end
 	return soft_lambda, soft_u, soft_v
 end
@@ -139,9 +147,10 @@ function get_chibbs(soft_lambda, soft_u, soft_v)
 		for word = 1:V
 			mean_lambda[topic][word] /= lambda_Z
 		end
-		tmp_uv = collect(values(mean_u[topic])) + collect(values(soft_v[topic]))
-		mean_u[topic] /= tmp_uv[topic]
+
+		mean_u[topic] /= (mean_u[topic] + soft_v[topic])
 	end
+
 	return mean_lambda, mean_u
 end
 
@@ -164,17 +173,7 @@ function chibbs_loglikelihood(mean_lambda, mean_u, data, _start, _end)
 end
 
 
-function get_margin_loglikelihood(prev_weight, prev_support, time, prev_cid, N, data,  soft_lambda,soft_u,soft_v)
-
-	#initialize data structures
-	q_probabilities=Dict()
-	for i=time:time+LOOKAHEAD_DELTA
-		soft_lambda[i]=Dict(); soft_u[i]=Dict();soft_v[i]=Dict()
-		for w=1:V
-			soft_lambda[i][w]=Dict();
-		end
-		q_probabilities[i]=Dict()
-	end
+function get_margin_loglikelihood(prev_weight, prev_support, time, LOOKAHEAD_DELTA, prev_cid, N, data, soft_lambda,soft_u,soft_v)
 
 	VARIATIONAL_ITERATIONS = 5
 	for iter=1:VARIATIONAL_ITERATIONS
@@ -194,12 +193,12 @@ function get_margin_loglikelihood(prev_weight, prev_support, time, prev_cid, N, 
 
 			## Choose support (j) by sampling cid from gibbs using mult
 			posterior, sampled_cid = sample_cid(z_posterior_array_probability, z_posterior_array_cid)
-			soft_lambda, soft_u, soft_v = update_statistics(current_support, z_posterior_array_probability, posterior,sampled_cid, data, time, soft_lambda, soft_u, soft_v)
+			soft_lambda, soft_u, soft_v = update_statistics(current_support, z_posterior_array_probability, z_posterior_array_cid, posterior,sampled_cid, data, time, soft_lambda, soft_u, soft_v)
 			c_aggregate = myappend(c_aggregate, sampled_cid)
 
 			max_cid = max(current_support)
-			if sampled_cid == 
-				current_support = append(current_support, max_cid )
+			if sampled_cid == max_cid
+				current_support = myappend(current_support, max_cid )
 			end
 		end
 	end
@@ -209,4 +208,4 @@ function get_margin_loglikelihood(prev_weight, prev_support, time, prev_cid, N, 
 end
 
 
-
+end

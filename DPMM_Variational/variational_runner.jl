@@ -361,7 +361,7 @@ function path_integral(time, N)
 		z_posterior_array_cid = myappend(z_posterior_array_cid, j)
 	end
 
-	#### Now do lookahead #####
+	#### Update V : Need to do this seperately as we need all conditional gibbs probabilities#####
 	prev_soft_v = particles[time-1][N]["hidden_state"]["soft_v"]
 
 	normalizing_constant = logsumexp(z_posterior_array_probability)
@@ -379,15 +379,24 @@ function path_integral(time, N)
 		else
 			gradient_v(prev_soft_v, cid,  EXP_z_posterior_array_probability, z_posterior_array_cid, LRATE, hyperparameters["a"], NUM_DOCS, time, N, false)
 		end
-		if time + LOOKAHEAD_DELTA <= NUM_DOCS
+	end
+
+	################## LOOKAHEAD ##########################
+	"""for i=1:length(LOOKAHEAD_DELTA)
+		obj = LOBJS[i]
+		zj_probability = obj.zj_probability; support = unique(obj.current_c_aggregate); current_c_aggregate = obj.current_c_aggregate;
+		time = obj.time; cid = obj.current_support; N = obj.N; 
+
+		if time + LOOKAHEAD_DELTA < NUM_DOCS
 			zj_probability_lookahead = get_margin_loglikelihood(
-				zj_probability, support, time+1, cid, N, data[time:time+LOOKAHEAD_DELTA]
+				zj_probability, support, time+1, LOOKAHEAD_DELTA, cid, N, data, 
 				particles[time][N]["hidden_state"]["cache"]["soft_lambda"],
 				particles[time][N]["hidden_state"]["cache"]["soft_u"],
 				particles[time][N]["hidden_state"]["cache"]["soft_v"]
 			)
+			println(zj_probability_lookahead)
 		end
-	end
+	end"""
 
 	weight, sampled_cid = sample_cid(z_posterior_array_probability, z_posterior_array_cid)
 
