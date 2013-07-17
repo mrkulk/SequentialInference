@@ -270,7 +270,7 @@ function existing_topic_posterior_helper(time, N, eta, cid, prior)
 
 	posterior = prior + (numerator1+numerator2) - (denominator1+denominator2)
 
-	gradient_lambda_u(cid, data[time], wordArr, posterior, time, N, hyperparameters["eta"], false)
+	gradient_soft_lambda_u(cid, data[time], wordArr, posterior, time, N, hyperparameters["eta"], false)
 
 	return posterior
 end
@@ -319,7 +319,7 @@ function get_posterior_zj(cid, c_aggregate,time, N, root_support)
 			particles[time][N]["hidden_state"]["cache"]["lambda"][cid][word] = hyperparameters["eta"] + wordArr[word]
 		end
 
-		gradient_lambda_u(cid, data[time], wordArr, posterior, time, N, eta, true)
+		gradient_soft_lambda_u( cid, data[time], wordArr, posterior, time, N, eta, true)
 
 	else #existing cluster
 		posterior = existing_topic_posterior_helper(time, N,eta,cid, posterior)
@@ -347,11 +347,7 @@ function path_integral(time, N)
 		zj_probability = get_posterior_zj(j, current_c_aggregate, time, N, root_support)
 
 		LOBJS = myappend(LOBJS, lookaheadOBJ(zj_probability, current_c_aggregate, time, j, N))
-		"""if time + LOOKAHEAD_DELTA <= NUM_DOCS
-			new_lambda_kw = deepcopy(lambda_kw)
-			zj_probability_lookahead = get_weight_lookahead(zj_probability, unique(current_c_aggregate),current_c_aggregate, time+1, j, N, new_lambda_kw)	
-			zj_probability = zj_probability_lookahead
-		end"""
+
 		z_posterior_array_probability = myappend(z_posterior_array_probability, zj_probability)
 		z_posterior_array_cid = myappend(z_posterior_array_cid, j)
 	end
@@ -359,21 +355,34 @@ function path_integral(time, N)
 	#### Now do lookahead #####
 	prev_soft_v = particles[time-1][N]["hidden_state"]["soft_v"]
 
+	normalizing_constant = logsumexp(z_posterior_array_probability)
+	EXP_z_posterior_array_probability = deepcopy(z_posterior_array_probability)
+	EXP_z_posterior_array_probability -= normalizing_constant
+	EXP_z_posterior_array_probability = exp(EXP_z_posterior_array_probability)
+
 	for i=1:length(LOBJS)
 		obj = LOBJS[i]
 		zj_probability = obj.zj_probability; support = unique(obj.current_c_aggregate); current_c_aggregate = obj.current_c_aggregate;
 		time = obj.time; cid = obj.current_support; N = obj.N; 
 
 		if cid == max(root_support)
-			gradient_v(NaN, cid,  z_posterior_array_probability, z_posterior_array_cid, LRATE, hyperparameters["a"], NUM_DOCS, time, N, true)			
+			gradient_v(NaN, cid,  EXP_z_posterior_array_probability, z_posterior_array_cid, LRATE, hyperparameters["a"], NUM_DOCS, time, N, true)			
 		else
-			gradient_v(prev_soft_v, cid,  z_posterior_array_probability, z_posterior_array_cid, LRATE, hyperparameters["a"], NUM_DOCS, time, N, false)
+			gradient_v(prev_soft_v, cid,  EXP_z_posterior_array_probability, z_posterior_array_cid, LRATE, hyperparameters["a"], NUM_DOCS, time, N, false)
 		end
+		"""if time + LOOKAHEAD_DELTA <= NUM_DOCS
+			zj_probability_lookahead = get_weight_lookahead(
+				zj_probability, support,current_c_aggregate, time+1, cid, N, data[time:time+LOOKAHEAD_DELTA]
+				particles[time][N]["hidden_state"]["cache"]["soft_lambda"],
+				particles[time][N]["hidden_state"]["cache"]["soft_u"],
+				particles[time][N]["hidden_state"]["cache"]["soft_v"]
+			)
+		end"""
 	end
 
 	weight, sampled_cid = sample_cid(z_posterior_array_probability, z_posterior_array_cid)
 
-	return weight, sampled_cid
+	return weight, sampled_cid, root_support
 end
 
 
@@ -445,12 +454,37 @@ function run_sampler()
 			particles[time][N]["hidden_state"]["cache"]["soft_u"] = Dict(); 
 			particles[time][N]["hidden_state"]["cache"]["soft_v"] = Dict(); 
 
-			particles[time][N]["weight"], sampled_cid = path_integral(time,N)
+			particles[time][N]["weight"], sampled_cid, root_support = path_integral(time,N)
 
-			particles[time][N]["hidden_state"]["lambda"][sampled_cid] = deepcopy(particles[time][N]["hidden_state"]["cache"]["lambda"][sampled_cid])
-			particles[time][N]["hidden_state"]["soft_lambda"][sampled_cid] = deepcopy(particles[time][N]["hidden_state"]["cache"]["soft_lambda"][sampled_cid])
-			particles[time][N]["hidden_state"]["soft_u"][sampled_cid] = deepcopy(particles[time][N]["hidden_state"]["cache"]["soft_u"][sampled_cid])
-			particles[time][N]["hidden_state"]["soft_v"][sampled_cid] = deepcopy(particles[time][N]["hidden_state"]["cache"]["soft_v"][sampled_cid])
+			max_cid = max(root_support)
+
+			for j in root_support
+				if j != sampled_cid
+					particles[time][N]["hidden_state"]["lambda"][sampled_cid] = deepcopy(particles[time][N]["hidden_state"]["cache"]["lambda"][sampled_cid])
+
+					particles[time][N]["hidden_state"]["soft_lambda"][sampled_cid] = deepcopy(particles[time][N]["hidden_state"]["cache"]["soft_lambda"][sampled_cid])
+					particles[time][N]["hidden_state"]["soft_u"][sampled_cid] = deepcopy(particles[time][N]["hidden_state"]["cache"]["soft_u"][sampled_cid])
+					particles[time][N]["hidden_state"]["soft_v"][sampled_cid] = deepcopy(particles[time][N]["hidden_state"]["cache"]["soft_v"][sampled_cid])
+				else
+					if j == max_cid
+						for word=1:V
+							particles[time][N]["hidden_state"]["soft_lambda"][j][word] = hyperparameters["eta"]
+						end
+						particles[time][N]["hidden_state"]["soft_u"][j] = 1
+						particles[time][N]["hidden_state"]["soft_v"][j] = hyperparameters["a"]
+					else
+						for word=1:V
+							prev_soft_lambda = particles[time-1][N]["hidden_state"]["soft_lambda"][j][word]
+							particles[time][N]["hidden_state"]["soft_lambda"][j][word] = prev_soft_lambda + LRATE*(-prev_soft_lambda + hyperparameters["eta"])
+						end
+						prev_u = particles[time-1][N]["hidden_state"]["soft_u"][j]
+						particles[time][N]["hidden_state"]["soft_lambda"][j] = prev_u + LRATE*(-prev_u + 1)
+
+						prev_v = particles[time-1][N]["hidden_state"]["soft_v"][j]
+						particles[time][N]["hidden_state"]["soft_lambda"][j] = prev_v + LRATE*(-prev_v + hyperparameters["a"])
+					end
+				end
+			end
 
 			### deleting cache data structures
 			delete!(particles[time][N]["hidden_state"], "cache")
@@ -480,7 +514,7 @@ if length(ARGS) > 0
 	INTEGRAL_PATHS = int(ARGS[3])
 else
 	NUM_PARTICLES = 1#1
-	DELTA = 0 #1 will return without lookahead
+	DELTA = 10 #1 will return without lookahead
 	INTEGRAL_PATHS = 2
 end
 

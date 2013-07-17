@@ -3,13 +3,7 @@ using Debug
 
 @debug begin 
 
-function gradient_v(prev_soft_v, cid, z_posterior_array_probability, z_posterior_array_cid, LRATE, alpha, NUM_DOCS, time, N, is_new_cid)
-
-	normalizing_constant = logsumexp(z_posterior_array_probability)
-
-	EXP_z_posterior_array_probability = deepcopy(z_posterior_array_probability)
-	EXP_z_posterior_array_probability -= normalizing_constant
-	EXP_z_posterior_array_probability = exp(EXP_z_posterior_array_probability)
+function gradient_v(prev_soft_v, cid, EXP_z_posterior_array_probability, z_posterior_array_cid, LRATE, alpha, NUM_DOCS, time, N, is_new_cid)
 
 	sufficient_stats = 0
 	for i=1:length(z_posterior_array_cid)
@@ -26,12 +20,12 @@ function gradient_v(prev_soft_v, cid, z_posterior_array_probability, z_posterior
 end
 
 
-function gradient_lambda_u(cid, document, wordArr, posterior, time, N, eta, is_new_cid)
+function gradient_soft_lambda_u(cid, document, wordArr, posterior, time, N, eta, is_new_cid)
 	if is_new_cid == false  #existing cluster
 		prev_soft_lambda_kw = particles[time-1][N]["hidden_state"]["soft_lambda"]
 		prev_soft_u = particles[time-1][N]["hidden_state"]["soft_u"]
 	end
-
+	posterior = 1
 	particles[time][N]["hidden_state"]["cache"]["soft_lambda"][cid] = Dict()
 	particles[time][N]["hidden_state"]["cache"]["soft_u"][cid] = Dict()
 	for word = 1:V
@@ -46,8 +40,9 @@ function gradient_lambda_u(cid, document, wordArr, posterior, time, N, eta, is_n
 		particles[time][N]["hidden_state"]["cache"]["soft_u"][cid] = prev_soft_u[cid] + LRATE*(-prev_soft_u[cid] + 1 + NUM_DOCS*posterior)
 	else
 		particles[time][N]["hidden_state"]["cache"]["soft_u"][cid] = LRATE*(1 + NUM_DOCS*posterior)
-	end		
+	end	
 end
+
 
 
 end
