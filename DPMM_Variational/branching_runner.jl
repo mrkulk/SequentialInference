@@ -438,10 +438,12 @@ function run_sampler()
 
 			particles[time][N]["weight"], sampled_cid = path_integral(time,N)
 
-			if length(particles[time][N]["hidden_state"]["lambda"][sampled_cid]) < 0 #existing topic / new is created in path_integral
+			if length(particles[time][N]["hidden_state"]["lambda"][sampled_cid]) == 0 #existing topic / new is created in path_integral
 				particles[time][N]["hidden_state"]["lambda"][sampled_cid] = particles[time][N]["hidden_state"]["cache_topics"][sampled_cid]
 			end
+			
 			### Delete remaining cache_topics for other than sampled_cid later.  [[TODO]]
+			delete!(particles[time][N]["hidden_state"], "cache_topics")
 
 			##println("[[CHOSEN]] sampled_cid:",sampled_cid, " LAMBDA:", particles[time][N]["hidden_state"]["lambda"])
 
@@ -468,15 +470,15 @@ if length(ARGS) > 0
 	INTEGRAL_PATHS = int(ARGS[3])
 else
 	NUM_PARTICLES = 1#1
-	DELTA = 0 #1 will return without lookahead
-	INTEGRAL_PATHS = 2
+	DELTA = 0 #5will return without lookahead
+	INTEGRAL_PATHS = 3
 end
 
 #println(string("NUM_PARTICLES:", NUM_PARTICLES, " DELTA:", DELTA, " INTEGRAL_PATHS:", INTEGRAL_PATHS))
 
 data = loadObservations()
 
-LOOKAHEAD_DELTA = DELTA
+LOOKAHEAD_DELTA = 0
 ari_without_lookahead = run_sampler()
 #LOOKAHEAD_DELTA = DELTA
 #ari_with_lookahead = run_sampler()

@@ -54,6 +54,7 @@ const _DEBUG = 0
 data = Dict()
 
 srand(1)
+
 LRATE = hyperparameters["lrate"]
 
 #################### DATA LOADER AND PLOTTING ##################################
@@ -479,7 +480,7 @@ if length(ARGS) > 0
 	INTEGRAL_PATHS = int(ARGS[3])
 else
 	NUM_PARTICLES = 1#1
-	DELTA = 3 #1 will return without lookahead
+	DELTA = 0 #1 will return without lookahead
 	INTEGRAL_PATHS = 2
 end
 
