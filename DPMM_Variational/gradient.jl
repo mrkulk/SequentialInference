@@ -25,7 +25,7 @@ function gradient_soft_lambda_u(cid, document, wordArr, posterior, time, N, eta,
 		prev_soft_lambda_kw = particles[time-1][N]["hidden_state"]["soft_lambda"]
 		prev_soft_u = particles[time-1][N]["hidden_state"]["soft_u"]
 	end
-	posterior = 1
+	posterior = 1 ##HARD ASSIGNMENT
 	particles[time][N]["hidden_state"]["cache"]["soft_lambda"][cid] = Dict()
 	particles[time][N]["hidden_state"]["cache"]["soft_u"][cid] = Dict()
 	for word = 1:V

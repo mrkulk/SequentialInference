@@ -235,7 +235,16 @@ function sample_cid(z_posterior_array_probability, z_posterior_array_cid)
 end
 
 
-
+function getWordArr(data, time)
+	words_in_this_doc = collect(values(data[time]))
+	wordArr = zeros(V)
+	for word = 1:V
+		indices = findin(words_in_this_doc, word)
+		tmp=length(indices)
+		wordArr[word] = tmp
+	end
+	return wordArr
+end
 
 
 function existing_topic_posterior_helper(time, N, eta, cid, prior)
@@ -370,14 +379,14 @@ function path_integral(time, N)
 		else
 			gradient_v(prev_soft_v, cid,  EXP_z_posterior_array_probability, z_posterior_array_cid, LRATE, hyperparameters["a"], NUM_DOCS, time, N, false)
 		end
-		"""if time + LOOKAHEAD_DELTA <= NUM_DOCS
-			zj_probability_lookahead = get_weight_lookahead(
-				zj_probability, support,current_c_aggregate, time+1, cid, N, data[time:time+LOOKAHEAD_DELTA]
+		if time + LOOKAHEAD_DELTA <= NUM_DOCS
+			zj_probability_lookahead = get_margin_loglikelihood(
+				zj_probability, support, time+1, cid, N, data[time:time+LOOKAHEAD_DELTA]
 				particles[time][N]["hidden_state"]["cache"]["soft_lambda"],
 				particles[time][N]["hidden_state"]["cache"]["soft_u"],
 				particles[time][N]["hidden_state"]["cache"]["soft_v"]
 			)
-		end"""
+		end
 	end
 
 	weight, sampled_cid = sample_cid(z_posterior_array_probability, z_posterior_array_cid)
@@ -478,10 +487,10 @@ function run_sampler()
 							particles[time][N]["hidden_state"]["soft_lambda"][j][word] = prev_soft_lambda + LRATE*(-prev_soft_lambda + hyperparameters["eta"])
 						end
 						prev_u = particles[time-1][N]["hidden_state"]["soft_u"][j]
-						particles[time][N]["hidden_state"]["soft_lambda"][j] = prev_u + LRATE*(-prev_u + 1)
+						particles[time][N]["hidden_state"]["soft_u"][j] = prev_u + LRATE*(-prev_u + 1)
 
 						prev_v = particles[time-1][N]["hidden_state"]["soft_v"][j]
-						particles[time][N]["hidden_state"]["soft_lambda"][j] = prev_v + LRATE*(-prev_v + hyperparameters["a"])
+						particles[time][N]["hidden_state"]["soft_v"][j] = prev_v + LRATE*(-prev_v + hyperparameters["a"])
 					end
 				end
 			end
