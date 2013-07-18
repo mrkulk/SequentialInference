@@ -41,7 +41,7 @@ const ENUMERATION = 0
 #LOOKAHEAD_DELTA = 10#10
 #const INTEGRAL_PATHS = 2#2
 
-srand(1077)
+srand(10)
 
 WORDS_PER_DOC = 10
 NUM_DOCS = 200
@@ -53,7 +53,7 @@ hyperparameters = Dict()
 hyperparameters["eta"]=0.5;hyperparameters["a"]=1;hyperparameters["lrate"] = 1
 const _DEBUG = 0
 data = Dict()
-
+true_topics = []
 
 
 LRATE = hyperparameters["lrate"]
@@ -109,6 +109,7 @@ function loadObservations()
 			topic = topics[i]
 		end
 		#data[i]["topic"] = topic
+		true_topics=myappend(true_topics, topic)
 		data["c_aggregate"][i] = topic
 		for j = 1:WORDS_PER_DOC
 			data[i][j] = rand(Multinomial(1, theta[topic])); data[i][j] = findin(data[i][j], 1)[1] 
@@ -357,12 +358,13 @@ function path_integral(time, N)
 	wordArr = getWordArr(data,time)
 	weight, sampled_cid = sample_cid(z_posterior_array_probability, z_posterior_array_cid)
 
-	if sampled_cid == max_root_support
-		update_newcluster_statistics(sampled_cid, data,time,wordArr, weight, N)
-	else
+	if haskey(particles[time][N]["hidden_state"]["lambda"], sampled_cid) == true
 		update_existingcluster_statistics(sampled_cid, data,time,wordArr, weight, N, lambda_sufficient_stats_ARR[sampled_cid])
+	else
+		update_newcluster_statistics(sampled_cid, data,time,wordArr, weight, N)
 	end
-	update_all_not_chosen_ks(sampled_cid, root_support, time, N)
+
+	update_all_not_chosen_ks(sampled_cid, root_support, time, N, max_root_support)
 
 
 	################## LOOKAHEAD ##########################
@@ -382,7 +384,6 @@ function path_integral(time, N)
 		#println(weight," >> ",lookahead_logprobability)
 		weight += lookahead_logprobability
 	end
-
 
 	return weight, sampled_cid
 end
@@ -474,7 +475,7 @@ if length(ARGS) > 0
 	DELTA = int(ARGS[2])
 	INTEGRAL_PATHS = int(ARGS[3])
 else
-	NUM_PARTICLES = 1#1
+	NUM_PARTICLES = 10#1
 	DELTA = 0 #1 will return without lookahead
 	INTEGRAL_PATHS = 2
 end
@@ -487,6 +488,7 @@ data = loadObservations()
 #LOOKAHEAD_DELTA = 0
 #ari_without_lookahead = run_sampler()
 
+print("\nWITH LOOKAHEAD: ")
 LOOKAHEAD_DELTA = DELTA
 ari_with_lookahead = run_sampler()
 

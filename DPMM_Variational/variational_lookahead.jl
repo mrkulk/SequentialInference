@@ -64,6 +64,7 @@ function sample_q_variational(cid, current_support, time, N, max_support_value, 
 	return posterior
 end
 
+
 function get_normalized_probabilities(z_posterior_array_probability)
 	normalizing_constant = logsumexp(z_posterior_array_probability)
 	EXP_z_posterior_array_probability = deepcopy(z_posterior_array_probability)
@@ -74,77 +75,38 @@ end
 
 
 
-
-
-function update_statistics(current_support, z_posterior_array_probability, z_posterior_array_cid,  posterior,sampled_cid, data, time, soft_lambda, soft_u, soft_v)
-	posterior = 1
+function update_statistics(current_support,  posterior,sampled_cid, data, time, soft_lambda, soft_u, soft_v)
 	wordArr = getWordArr(data, time)
-	EXP_z_posterior_array_probability = get_normalized_probabilities(z_posterior_array_probability)
 	eta = hyperparameters["eta"]; alpha=hyperparameters["a"]
 
 	max_cid = max(current_support)
 	
-	for cid in current_support 
-		is_new_cid = false
-		if cid == max_cid
-			is_new_cid = true
+	for cid in support
+		
+		if cid == max_cid & cid != sampled_cid
+			continue
 		end
 
-		if cid == sampled_cid
-			###### LAMBDA #######
-			if is_new_cid == true
-				soft_lambda[cid] = Dict()
-			end
-
-			for word = 1:V
-				if is_new_cid == false #existing cluster
-					soft_lambda[cid][word] = soft_lambda[cid][word] + LRATE*(-soft_lambda[cid][word] + eta + NUM_DOCS*(posterior*wordArr[word]))
-				else
-					soft_lambda[cid][word] =  LRATE*(eta)# + NUM_DOCS*(posterior*wordArr[word]))
-				end			
-			end
-
-			###### U ########
-			if is_new_cid == false
-				soft_u[cid] = soft_u[cid] + LRATE*(-soft_u[cid] + 1 + NUM_DOCS*posterior)
-			else
-				soft_u[cid] = LRATE*(1)# + NUM_DOCS*posterior)
-			end	
-
-			###### V #######
-			sufficient_stats = 0
-			#for i=1:length(z_posterior_array_cid)
-				#if z_posterior_array_cid[i] > cid
-				#	sufficient_stats += EXP_z_posterior_array_probability[i]
-				#end
-			#end
-
-			if sampled_cid > cid
-				sufficient_stats = 1
-			end
-
-			if is_new_cid == false
-				soft_v[cid] = soft_v[cid] + LRATE*(-soft_v[cid] + alpha + NUM_DOCS*sufficient_stats)
-			else
-				soft_v[cid] =  LRATE*(alpha)# )#+ NUM_DOCS*sufficient_stats)
-			end
-
+		is_new_cid == haskey(soft_lambda,cid)
+		posterior = int(cid == sampled_cid)
+		if is_new_cid == true
+			soft_lambda[cid] = Dict()
+			soft_u[cid]=0; soft_v[cid]=0;
+			sufficient_stats =0
 		else
+			sufficient_stats = int(sampled_cid > cid)
+		end
+
+		for word=1:V
 			if is_new_cid == true
-				soft_lambda[cid] = Dict()
-				for word=1:V
-					soft_lambda[cid][word] = hyperparameters["eta"]
-				end
-				soft_u[cid] = 1
-				soft_v[cid] = hyperparameters["a"]
+				soft_lambda[cid][word] = LRATE*(eta + NUM_DOCS*(posterior*wordArr[word]))
 			else
-				for word=1:V
-					soft_lambda[cid][word] = soft_lambda[cid][word] + LRATE*(-soft_lambda[cid][word] + hyperparameters["eta"])
-				end
-				soft_u[cid] = soft_u[cid] + LRATE*(-soft_u[cid] + 1)
-				soft_v[cid] = soft_v[cid] + LRATE*(-soft_v[cid] + hyperparameters["a"])
+				soft_lambda[cid][word]=soft_lambda[cid][word] + LRATE*(-soft_lambda[cid][word] + eta + NUM_DOCS*(posterior*wordArr[word]))
 			end
 		end
+		soft_u[cid] = soft_u[cid] + LRATE*(-soft_u[cid] + 1 + NUM_DOCS*posterior)
+		soft_v[cid] = soft_v[cid] + LRATE*(-soft_v[cid] + alpha + NUM_DOCS*sufficient_stats)
+
 	end
 	return soft_lambda, soft_u, soft_v
 end
@@ -191,10 +153,16 @@ function get_margin_loglikelihood(prev_weight, prev_support, time, LOOKAHEAD_DEL
 
 	current_support = deepcopy(prev_support)
 
-	VARIATIONAL_ITERATIONS = 3
+	VARIATIONAL_ITERATIONS = 100
+	distributionArr = Dict()
+
+	println(soft_lambda)
+	println(soft_u)
+	println(soft_v)
 
 	for iter=1:VARIATIONAL_ITERATIONS
 		c_aggregate = []
+		println("-=-=-=-=")
 		for t=time:time+LOOKAHEAD_DELTA
 
 			##current_support = myappend(prev_support, max(prev_support)+1)
@@ -210,8 +178,13 @@ function get_margin_loglikelihood(prev_weight, prev_support, time, LOOKAHEAD_DEL
 
 			## Choose support (j) by sampling cid from gibbs using mult
 			posterior, sampled_cid = sample_cid(z_posterior_array_probability, z_posterior_array_cid)
-			soft_lambda, soft_u, soft_v = update_statistics(current_support, z_posterior_array_probability, z_posterior_array_cid, posterior,sampled_cid, data, time, soft_lambda, soft_u, soft_v)
+
+			soft_lambda, soft_u, soft_v = update_statistics(current_support, posterior,sampled_cid, data, time, soft_lambda, soft_u, soft_v)
 			c_aggregate = myappend(c_aggregate, sampled_cid)
+
+			println("iter:", iter, "true_topics: ", true_topics[t], "c:", length(unique(current_support)))
+			#print(" q(z_t):", get_normalized_probabilities(z_posterior_array_probability))
+			println(soft_lambda)
 
 			max_cid = max(current_support)
 			if sampled_cid == max_cid
