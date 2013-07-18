@@ -27,7 +27,9 @@ function sample_q_variational(cid, current_support, time, N, max_support_value, 
 		posterior -= denominator2
 
 		for k in current_support
-			posterior += log(soft_v[k]) - log(soft_v[k] + soft_u[k])
+			if k < max_support_value
+				posterior += log(soft_v[k]) - log(soft_v[k] + soft_u[k])
+			end
 		end
 
 	else #existing cluster
@@ -74,7 +76,7 @@ end
 
 
 
-function update_statistics(current_support, z_posterior_array_probability, z_posterior_array_cid,  posterior,cid, data, time, soft_lambda, soft_u, soft_v)
+function update_statistics(current_support, z_posterior_array_probability, z_posterior_array_cid,  posterior,sampled_cid, data, time, soft_lambda, soft_u, soft_v)
 	posterior = 1
 	wordArr = getWordArr(data, time)
 	EXP_z_posterior_array_probability = get_normalized_probabilities(z_posterior_array_probability)
@@ -82,19 +84,23 @@ function update_statistics(current_support, z_posterior_array_probability, z_pos
 
 	max_cid = max(current_support)
 	
-	for j in current_support 
+	for cid in current_support 
 		is_new_cid = false
-		if j == max_cid
+		if cid == max_cid
 			is_new_cid = true
 		end
 
-		if j == cid
+		if cid == sampled_cid
 			###### LAMBDA #######
+			if is_new_cid == true
+				soft_lambda[cid] = Dict()
+			end
+
 			for word = 1:V
 				if is_new_cid == false #existing cluster
 					soft_lambda[cid][word] = soft_lambda[cid][word] + LRATE*(-soft_lambda[cid][word] + eta + NUM_DOCS*(posterior*wordArr[word]))
 				else
-					soft_lambda[cid][word] =  LRATE*(eta + NUM_DOCS*(posterior*wordArr[word]))
+					soft_lambda[cid][word] =  LRATE*(eta)# + NUM_DOCS*(posterior*wordArr[word]))
 				end			
 			end
 
@@ -102,25 +108,30 @@ function update_statistics(current_support, z_posterior_array_probability, z_pos
 			if is_new_cid == false
 				soft_u[cid] = soft_u[cid] + LRATE*(-soft_u[cid] + 1 + NUM_DOCS*posterior)
 			else
-				soft_u[cid] = LRATE*(1 + NUM_DOCS*posterior)
+				soft_u[cid] = LRATE*(1)# + NUM_DOCS*posterior)
 			end	
 
 			###### V #######
 			sufficient_stats = 0
-			for i=1:length(z_posterior_array_cid)
-				if z_posterior_array_cid[i] > cid
-					sufficient_stats += EXP_z_posterior_array_probability[i]
-				end
+			#for i=1:length(z_posterior_array_cid)
+				#if z_posterior_array_cid[i] > cid
+				#	sufficient_stats += EXP_z_posterior_array_probability[i]
+				#end
+			#end
+
+			if sampled_cid > cid
+				sufficient_stats = 1
 			end
 
 			if is_new_cid == false
 				soft_v[cid] = soft_v[cid] + LRATE*(-soft_v[cid] + alpha + NUM_DOCS*sufficient_stats)
 			else
-				soft_v[cid] =  LRATE*(alpha + NUM_DOCS*sufficient_stats)
+				soft_v[cid] =  LRATE*(alpha)# )#+ NUM_DOCS*sufficient_stats)
 			end
 
 		else
 			if is_new_cid == true
+				soft_lambda[cid] = Dict()
 				for word=1:V
 					soft_lambda[cid][word] = hyperparameters["eta"]
 				end
@@ -130,8 +141,8 @@ function update_statistics(current_support, z_posterior_array_probability, z_pos
 				for word=1:V
 					soft_lambda[cid][word] = soft_lambda[cid][word] + LRATE*(-soft_lambda[cid][word] + hyperparameters["eta"])
 				end
-				soft_u[j] = soft_u[j] + LRATE*(-soft_u[j] + 1)
-				soft_v[j] = soft_v[j] + LRATE*(-soft_v[j] + hyperparameters["a"])
+				soft_u[cid] = soft_u[cid] + LRATE*(-soft_u[cid] + 1)
+				soft_v[cid] = soft_v[cid] + LRATE*(-soft_v[cid] + hyperparameters["a"])
 			end
 		end
 	end
@@ -174,13 +185,19 @@ end
 
 
 function get_margin_loglikelihood(prev_weight, prev_support, time, LOOKAHEAD_DELTA, prev_cid, N, data, soft_lambda,soft_u,soft_v)
+	if LOOKAHEAD_DELTA == 0
+		return 0
+	end
 
-	VARIATIONAL_ITERATIONS = 5
+	current_support = deepcopy(prev_support)
+
+	VARIATIONAL_ITERATIONS = 3
+
 	for iter=1:VARIATIONAL_ITERATIONS
 		c_aggregate = []
 		for t=time:time+LOOKAHEAD_DELTA
 
-			current_support = myappend(prev_support, max(prev_support)+1)
+			##current_support = myappend(prev_support, max(prev_support)+1)
 			z_posterior_array_probability = []
 			z_posterior_array_cid = []
 			max_support_value = max(current_support)
@@ -198,7 +215,7 @@ function get_margin_loglikelihood(prev_weight, prev_support, time, LOOKAHEAD_DEL
 
 			max_cid = max(current_support)
 			if sampled_cid == max_cid
-				current_support = myappend(current_support, max_cid )
+				current_support = myappend(current_support, max_cid + 1 )
 			end
 		end
 	end

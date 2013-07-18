@@ -41,6 +41,7 @@ const ENUMERATION = 0
 #LOOKAHEAD_DELTA = 10#10
 #const INTEGRAL_PATHS = 2#2
 
+srand(1077)
 
 WORDS_PER_DOC = 10
 NUM_DOCS = 200
@@ -53,7 +54,7 @@ hyperparameters["eta"]=0.5;hyperparameters["a"]=1;hyperparameters["lrate"] = 1
 const _DEBUG = 0
 data = Dict()
 
-srand(1)
+
 
 LRATE = hyperparameters["lrate"]
 
@@ -251,14 +252,15 @@ function existing_topic_posterior_helper(time, N, eta, cid, prior)
 
 	state = particles[time-1][N]["hidden_state"]
 	
-	particles[time][N]["hidden_state"]["cache"]["lambda"][cid] = Dict()
-
 	numerator1 = 0; tmp_denominator1 = 0; #this is first side page 5 from Chong et al
 	numerator2 = 0; tmp_denominator2 = 0; #this is second side page 5 from Chong et al
 	denominator1 = 0;
 
 	words_in_this_doc = collect(values(data[time]))
 	wordArr = zeros(V)
+
+	lambda_sufficient_stats=zeros(V)
+
 	for word = 1:V
 		indices = findin(words_in_this_doc, word)
 		
@@ -271,7 +273,7 @@ function existing_topic_posterior_helper(time, N, eta, cid, prior)
 		tmp_denominator2 += state["lambda"][cid][word]
 		denominator1 += lgamma(state["lambda"][cid][word])
 
-		particles[time][N]["hidden_state"]["cache"]["lambda"][cid][word] = numerator2_tmp
+		lambda_sufficient_stats[word] = numerator2_tmp
 	end
 
 	numerator1 = lgamma(tmp_denominator2)
@@ -279,9 +281,7 @@ function existing_topic_posterior_helper(time, N, eta, cid, prior)
 
 	posterior = prior + (numerator1+numerator2) - (denominator1+denominator2)
 
-	gradient_soft_lambda_u(cid, data[time], wordArr, posterior, time, N, hyperparameters["eta"], false)
-
-	return posterior
+	return posterior, lambda_sufficient_stats
 end
 
 
@@ -289,6 +289,7 @@ function get_posterior_zj(cid, c_aggregate,time, N, root_support)
 
 	eta = hyperparameters["eta"]; alpha=hyperparameters["a"]; total_pts = time
 	posterior = 0
+	lambda_sufficient_stats = NaN
 
 	new_cluster_flag = 0
 	if cid < max(root_support)
@@ -322,85 +323,68 @@ function get_posterior_zj(cid, c_aggregate,time, N, root_support)
 
 		#println("[[[[NEW]]]]:", numerator1,"  ||  ",  denominator1,"  ||  ",  numerator2,"  ||  ", denominator2)
 
-		## create new lambda ##
-		particles[time][N]["hidden_state"]["cache"]["lambda"][cid] = Dict()
-		for word = 1:V
-			particles[time][N]["hidden_state"]["cache"]["lambda"][cid][word] = hyperparameters["eta"] + wordArr[word]
-		end
-
-		gradient_soft_lambda_u( cid, data[time], wordArr, posterior, time, N, eta, true)
-
 	else #existing cluster
-		posterior = existing_topic_posterior_helper(time, N,eta,cid, posterior)
+		posterior, lambda_sufficient_stats = existing_topic_posterior_helper(time, N,eta,cid, posterior)
 	end
 
 	#println("[POSTERIOR] ", posterior , " v:", exp(posterior), " cid:", cid)
 	#println("\n")
-	return posterior
+	return posterior, lambda_sufficient_stats
 
 end
 
 
+
+
 function path_integral(time, N)
+
 	root_support = particles[time-1][N]["hidden_state"]["c_aggregate"]
 	max_root_support= max(root_support)
 	root_support = unique(myappend(root_support, max_root_support+1))
-	
-	z_posterior_array_probability = []
-	z_posterior_array_cid = []
 
-	#println("SUPPORT:" , root_support)
-	LOBJS = []
+	max_root_support=max(root_support)
+	
+	z_posterior_array_probability = []; z_posterior_array_cid = []; lambda_sufficient_stats_ARR = Dict();
+
 	for j in root_support
 		current_c_aggregate = myappend(particles[time-1][N]["hidden_state"]["c_aggregate"], j)
-		zj_probability = get_posterior_zj(j, current_c_aggregate, time, N, root_support)
-
-		LOBJS = myappend(LOBJS, lookaheadOBJ(zj_probability, current_c_aggregate, time, j, N))
-
+		zj_probability, lambda_sufficient_stats = get_posterior_zj(j, current_c_aggregate, time, N, root_support)
 		z_posterior_array_probability = myappend(z_posterior_array_probability, zj_probability)
 		z_posterior_array_cid = myappend(z_posterior_array_cid, j)
+		lambda_sufficient_stats_ARR[j] =  lambda_sufficient_stats
 	end
 
-	#### Update V : Need to do this seperately as we need all conditional gibbs probabilities#####
-	prev_soft_v = particles[time-1][N]["hidden_state"]["soft_v"]
-
-	normalizing_constant = logsumexp(z_posterior_array_probability)
-	EXP_z_posterior_array_probability = deepcopy(z_posterior_array_probability)
-	EXP_z_posterior_array_probability -= normalizing_constant
-	EXP_z_posterior_array_probability = exp(EXP_z_posterior_array_probability)
-
-	for i=1:length(LOBJS)
-		obj = LOBJS[i]
-		zj_probability = obj.zj_probability; support = unique(obj.current_c_aggregate); current_c_aggregate = obj.current_c_aggregate;
-		time = obj.time; cid = obj.current_support; N = obj.N; 
-
-		if cid == max(root_support)
-			gradient_v(NaN, cid,  EXP_z_posterior_array_probability, z_posterior_array_cid, LRATE, hyperparameters["a"], NUM_DOCS, time, N, true)			
-		else
-			gradient_v(prev_soft_v, cid,  EXP_z_posterior_array_probability, z_posterior_array_cid, LRATE, hyperparameters["a"], NUM_DOCS, time, N, false)
-		end
-	end
-
-	################## LOOKAHEAD ##########################
-	"""for i=1:length(LOOKAHEAD_DELTA)
-		obj = LOBJS[i]
-		zj_probability = obj.zj_probability; support = unique(obj.current_c_aggregate); current_c_aggregate = obj.current_c_aggregate;
-		time = obj.time; cid = obj.current_support; N = obj.N; 
-
-		if time + LOOKAHEAD_DELTA < NUM_DOCS
-			zj_probability_lookahead = get_margin_loglikelihood(
-				zj_probability, support, time+1, LOOKAHEAD_DELTA, cid, N, data, 
-				particles[time][N]["hidden_state"]["cache"]["soft_lambda"],
-				particles[time][N]["hidden_state"]["cache"]["soft_u"],
-				particles[time][N]["hidden_state"]["cache"]["soft_v"]
-			)
-			println(zj_probability_lookahead)
-		end
-	end"""
-
+	wordArr = getWordArr(data,time)
 	weight, sampled_cid = sample_cid(z_posterior_array_probability, z_posterior_array_cid)
 
-	return weight, sampled_cid, root_support
+	if sampled_cid == max_root_support
+		update_newcluster_statistics(sampled_cid, data,time,wordArr, weight, N)
+	else
+		update_existingcluster_statistics(sampled_cid, data,time,wordArr, weight, N, lambda_sufficient_stats_ARR[sampled_cid])
+	end
+	update_all_not_chosen_ks(sampled_cid, root_support, time, N)
+
+
+	################## LOOKAHEAD ##########################
+	"""println("----[[BEFORE]]----")
+		#println(particles[time][N]["hidden_state"]["lambda"])
+		println(particles[time][N]["hidden_state"]["soft_lambda"])
+		println(particles[time][N]["hidden_state"]["soft_u"])
+		println(particles[time][N]["hidden_state"]["soft_v"])"""
+
+	if time + LOOKAHEAD_DELTA < NUM_DOCS
+		lookahead_logprobability = get_margin_loglikelihood(
+			weight, root_support, time+1, LOOKAHEAD_DELTA, sampled_cid, N, data, 
+			deepcopy(particles[time][N]["hidden_state"]["soft_lambda"]),
+			deepcopy(particles[time][N]["hidden_state"]["soft_u"]),
+			deepcopy(particles[time][N]["hidden_state"]["soft_v"])
+		)
+		#println(weight," >> ",lookahead_logprobability)
+		weight += lookahead_logprobability
+	end
+
+
+	return weight, sampled_cid
 end
 
 
@@ -409,11 +393,8 @@ function run_sampler()
 	state=Dict()
 	state["c"] = [1]
 	state["c_aggregate"] = [1]
+
 	state["lambda"] = Dict(); state["lambda"][1] = Dict();
-	
-	state["cache"] = Dict();
-	state["cache"]["lambda"] = Dict(); state["cache"]["soft_lambda"] = Dict(); state["cache"]["soft_u"] = Dict(); state["cache"]["soft_v"] = Dict(); 
-	
 	state["soft_lambda"] = Dict(); state["soft_u"] = Dict(); state["soft_v"] = Dict();
 	state["soft_lambda"][1] = Dict(); state["soft_u"][1] = Dict(); state["soft_v"][1] = Dict();
 
@@ -466,46 +447,7 @@ function run_sampler()
 			particles[time][N]["hidden_state"]["soft_u"] = deepcopy(particles[time-1][N]["hidden_state"]["soft_u"])
 			particles[time][N]["hidden_state"]["soft_v"] = deepcopy(particles[time-1][N]["hidden_state"]["soft_v"])
 			
-			particles[time][N]["hidden_state"]["cache"]=Dict();
-			particles[time][N]["hidden_state"]["cache"]["lambda"] = Dict();
-			particles[time][N]["hidden_state"]["cache"]["soft_lambda"] = Dict(); 
-			particles[time][N]["hidden_state"]["cache"]["soft_u"] = Dict(); 
-			particles[time][N]["hidden_state"]["cache"]["soft_v"] = Dict(); 
-
-			particles[time][N]["weight"], sampled_cid, root_support = path_integral(time,N)
-
-			max_cid = max(root_support)
-
-			for j in root_support
-				if j != sampled_cid
-					particles[time][N]["hidden_state"]["lambda"][sampled_cid] = deepcopy(particles[time][N]["hidden_state"]["cache"]["lambda"][sampled_cid])
-
-					particles[time][N]["hidden_state"]["soft_lambda"][sampled_cid] = deepcopy(particles[time][N]["hidden_state"]["cache"]["soft_lambda"][sampled_cid])
-					particles[time][N]["hidden_state"]["soft_u"][sampled_cid] = deepcopy(particles[time][N]["hidden_state"]["cache"]["soft_u"][sampled_cid])
-					particles[time][N]["hidden_state"]["soft_v"][sampled_cid] = deepcopy(particles[time][N]["hidden_state"]["cache"]["soft_v"][sampled_cid])
-				else
-					if j == max_cid
-						for word=1:V
-							particles[time][N]["hidden_state"]["soft_lambda"][j][word] = hyperparameters["eta"]
-						end
-						particles[time][N]["hidden_state"]["soft_u"][j] = 1
-						particles[time][N]["hidden_state"]["soft_v"][j] = hyperparameters["a"]
-					else
-						for word=1:V
-							prev_soft_lambda = particles[time-1][N]["hidden_state"]["soft_lambda"][j][word]
-							particles[time][N]["hidden_state"]["soft_lambda"][j][word] = prev_soft_lambda + LRATE*(-prev_soft_lambda + hyperparameters["eta"])
-						end
-						prev_u = particles[time-1][N]["hidden_state"]["soft_u"][j]
-						particles[time][N]["hidden_state"]["soft_u"][j] = prev_u + LRATE*(-prev_u + 1)
-
-						prev_v = particles[time-1][N]["hidden_state"]["soft_v"][j]
-						particles[time][N]["hidden_state"]["soft_v"][j] = prev_v + LRATE*(-prev_v + hyperparameters["a"])
-					end
-				end
-			end
-
-			### deleting cache data structures
-			delete!(particles[time][N]["hidden_state"], "cache")
+			particles[time][N]["weight"], sampled_cid = path_integral(time,N)
 
 			##println("[[CHOSEN]] sampled_cid:",sampled_cid, " LAMBDA:", particles[time][N]["hidden_state"]["lambda"])
 			
@@ -526,13 +468,14 @@ end
 
 
 #################### MAIN RUNNER ####################
+
 if length(ARGS) > 0
 	NUM_PARTICLES = int(ARGS[1])
 	DELTA = int(ARGS[2])
 	INTEGRAL_PATHS = int(ARGS[3])
 else
 	NUM_PARTICLES = 1#1
-	DELTA = 10 #1 will return without lookahead
+	DELTA = 0 #1 will return without lookahead
 	INTEGRAL_PATHS = 2
 end
 
@@ -540,10 +483,12 @@ end
 
 data = loadObservations()
 
+#print("WITHOUT LOOKAHEAD: ")
+#LOOKAHEAD_DELTA = 0
+#ari_without_lookahead = run_sampler()
+
 LOOKAHEAD_DELTA = DELTA
-ari_without_lookahead = run_sampler()
-#LOOKAHEAD_DELTA = DELTA
-#ari_with_lookahead = run_sampler()
+ari_with_lookahead = run_sampler()
 
 #print([ari_without_lookahead, ari_with_lookahead])"""
 
