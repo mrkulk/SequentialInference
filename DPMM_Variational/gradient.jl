@@ -68,32 +68,28 @@ function update_all_not_chosen_ks(sampled_cid, support, time, N, max_root_suppor
 	prev_soft_v = particles[time-1][N]["hidden_state"]["soft_v"]
 
 	for cid in support
-		if cid == sampled_cid
-			continue
-		end
+		if cid != sampled_cid && cid < max_root_support
+		
+			is_new_cid = haskey(particles[time][N]["hidden_state"]["soft_lambda"], cid)
 
-		if cid == max_root_support & cid != sampled_cid
-			continue
-		end
-
-		is_new_cid = haskey(particles[time][N]["hidden_state"]["soft_lambda"], cid)
-
-		if is_new_cid == true
-			particles[time][N]["hidden_state"]["soft_lambda"][cid] = Dict()
-			prev_soft_u[cid] = 0
-			prev_soft_v[cid] = 0
-		end
-
-		for word=1:V
 			if is_new_cid == true
-				particles[time][N]["hidden_state"]["soft_lambda"][cid][word] = LRATE*(eta)
-			else
-				particles[time][N]["hidden_state"]["soft_lambda"][cid][word] = prev_soft_lambda[cid][word] + LRATE*(-prev_soft_lambda[cid][word] + eta)
+				particles[time][N]["hidden_state"]["soft_lambda"][cid] = Dict()
+				prev_soft_u[cid] = 0
+				prev_soft_v[cid] = 0
 			end
-		end
 
-		particles[time][N]["hidden_state"]["soft_u"][cid]= prev_soft_u[cid] + LRATE*(-prev_soft_u[cid] + 1)
-		particles[time][N]["hidden_state"]["soft_v"][cid]= prev_soft_v[cid] + LRATE*(-prev_soft_v[cid] + a)
+			for word=1:V
+				if is_new_cid == true
+					particles[time][N]["hidden_state"]["soft_lambda"][cid][word] = LRATE*(eta)
+				else
+					particles[time][N]["hidden_state"]["soft_lambda"][cid][word] = prev_soft_lambda[cid][word] + LRATE*(-prev_soft_lambda[cid][word] + eta)
+				end
+			end
+
+			particles[time][N]["hidden_state"]["soft_u"][cid]= prev_soft_u[cid] + LRATE*(-prev_soft_u[cid] + 1)
+			particles[time][N]["hidden_state"]["soft_v"][cid]= prev_soft_v[cid] + LRATE*(-prev_soft_v[cid] + a)
+
+		end
 	end
 end
 

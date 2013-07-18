@@ -74,6 +74,30 @@ function get_normalized_probabilities(z_posterior_array_probability)
 end
 
 
+function update_helper(cid, sampled_cid, soft_lambda, soft_u, soft_v, posterior, wordArr)
+	is_new_cid = haskey(soft_lambda,cid)
+
+	if is_new_cid == true
+		soft_lambda[cid] = Dict()
+		soft_u[cid]=0; soft_v[cid]=0;
+		sufficient_stats =0
+	else
+		sufficient_stats = int(sampled_cid > cid)
+	end
+
+	for word=1:V
+		if is_new_cid == true
+			soft_lambda[cid][word] = LRATE*(eta + NUM_DOCS*(posterior*wordArr[word]))
+		else
+			soft_lambda[cid][word]=soft_lambda[cid][word] + LRATE*(-soft_lambda[cid][word] + eta + NUM_DOCS*(posterior*wordArr[word]))
+		end
+	end
+	soft_u[cid] = soft_u[cid] + LRATE*(-soft_u[cid] + 1 + NUM_DOCS*posterior)
+	soft_v[cid] = soft_v[cid] + LRATE*(-soft_v[cid] + alpha + NUM_DOCS*sufficient_stats)
+
+	return soft_lambda, soft_u, soft_v
+end
+
 
 function update_statistics(current_support,  posterior,sampled_cid, data, time, soft_lambda, soft_u, soft_v)
 	wordArr = getWordArr(data, time)
@@ -81,33 +105,20 @@ function update_statistics(current_support,  posterior,sampled_cid, data, time, 
 
 	max_cid = max(current_support)
 	
-	for cid in support
-		
-		if cid == max_cid & cid != sampled_cid
-			continue
+	for cid in current_support
+		posterior = -1; flag=-1;
+		if cid == sampled_cid && cid == max_cid
+			flag = 1; posterior = 1
+		end 
+		if cid != sampled_cid && cid < max_cid
+			flag = 1; posterior = 0
 		end
 
-		is_new_cid == haskey(soft_lambda,cid)
-		posterior = int(cid == sampled_cid)
-		if is_new_cid == true
-			soft_lambda[cid] = Dict()
-			soft_u[cid]=0; soft_v[cid]=0;
-			sufficient_stats =0
-		else
-			sufficient_stats = int(sampled_cid > cid)
+		if flag == 1
+			update_helper(cid, sampled_cid, soft_lambda, soft_u, soft_v, posterior, wordArr)
 		end
-
-		for word=1:V
-			if is_new_cid == true
-				soft_lambda[cid][word] = LRATE*(eta + NUM_DOCS*(posterior*wordArr[word]))
-			else
-				soft_lambda[cid][word]=soft_lambda[cid][word] + LRATE*(-soft_lambda[cid][word] + eta + NUM_DOCS*(posterior*wordArr[word]))
-			end
-		end
-		soft_u[cid] = soft_u[cid] + LRATE*(-soft_u[cid] + 1 + NUM_DOCS*posterior)
-		soft_v[cid] = soft_v[cid] + LRATE*(-soft_v[cid] + alpha + NUM_DOCS*sufficient_stats)
-
 	end
+
 	return soft_lambda, soft_u, soft_v
 end
 
