@@ -1,5 +1,6 @@
 
-#Tejas D K : tejask@mit.edu
+#Algorithm proposed by Sam Gershman
+#Implementation: Tejas D K : tejask@mit.edu
 
 function maxFilter(particles_t, particles_t_minus_1, maxfilter_probability_array, maxfilter_cid_array, NUM_PARTICLES)
 	perm = sortperm(maxfilter_probability_array, Sort.Reverse)
