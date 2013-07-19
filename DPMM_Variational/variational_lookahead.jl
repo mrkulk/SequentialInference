@@ -122,7 +122,8 @@ function update_statistics(current_support,  posterior,sampled_cid, data, time, 
 			flag = 1; posterior = 1
 		end 
 		if cid != sampled_cid && cid < max_cid
-			flag = 1; posterior = 0
+			flag = 1; #[[FIXME]]
+			posterior = 0
 		end
 
 		if flag == 1
@@ -164,19 +165,20 @@ function chibbs_loglikelihood(mean_lambda, mean_u, data, _start, _end)
 		end
 		logL += logsumexp(logL_arr_i)
 	end
-	println("CHIBBS: ", logL)
+	#println("CHIBBS: ", logL)
+
 	return logL
 end
 
 
-function get_margin_loglikelihood(prev_weight, prev_support, time, LOOKAHEAD_DELTA, prev_cid, N, data, soft_lambda,soft_u,soft_v)
+function get_margin_loglikelihood(prev_weight, prev_support, time, LOOKAHEAD_DELTA, prev_cid, N, data, soft_lambda,soft_u,soft_v, history)
 	if LOOKAHEAD_DELTA == 0
 		return 0
 	end
 
 	current_support = deepcopy(prev_support)
 
-	VARIATIONAL_ITERATIONS = 10
+	VARIATIONAL_ITERATIONS = 50
 	distributionArr = Dict()
 
 	DEBUG = false
@@ -186,9 +188,9 @@ function get_margin_loglikelihood(prev_weight, prev_support, time, LOOKAHEAD_DEL
 		println(soft_lambda)
 		println(soft_u)
 		println(soft_v)
-		println("\n\n")
 	end
 
+	c_aggregate = []
 	for iter=1:VARIATIONAL_ITERATIONS
 		c_aggregate = []
 		#println("-=-=-=-=")
@@ -225,12 +227,18 @@ function get_margin_loglikelihood(prev_weight, prev_support, time, LOOKAHEAD_DEL
 		end
 
 		#if DEBUG
-		println("ITER:",iter, " ARI:", metrics.adjusted_rand_score(c_aggregate, true_topics[time:time+LOOKAHEAD_DELTA]))
+		#println("ITER:",iter, " ARI:", metrics.adjusted_rand_score(c_aggregate, true_topics[time:time+LOOKAHEAD_DELTA]))
 		#end
 	end
 
 	mean_lambda, mean_u = get_chibbs(soft_lambda, soft_u, soft_v)
-	return chibbs_loglikelihood(mean_lambda, mean_u, data, time, time+LOOKAHEAD_DELTA)
+	logL = chibbs_loglikelihood(mean_lambda, mean_u, data, time, time+LOOKAHEAD_DELTA)
+
+	ARI = metrics.adjusted_rand_score(c_aggregate, true_topics[time:time+LOOKAHEAD_DELTA])
+	"""println("ARI:", ARI, " CHIBBS:", logL, " mean:", mean_lambda)
+	println(soft_lambda)
+	print(history); print(c_aggregate, "\n\n")"""
+	return logL
 end
 
 

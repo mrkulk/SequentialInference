@@ -43,8 +43,8 @@ const ENUMERATION = 0
 
 srand(10)
 
-WORDS_PER_DOC = 10
-NUM_DOCS = 200	#200
+WORDS_PER_DOC = 100
+NUM_DOCS = 10	#200
 NUM_TOPICS = NaN
 V = NaN
 state = Dict()
@@ -97,7 +97,7 @@ function loadObservations()
 	data = Dict()
 	theta, pi, NUM_TOPICS, V = dataset1()
 
-	topics = []#[1,1,1,1,2,2,2,1,1,1]
+	topics = [1,1,1,2,2,2,2,2,2,2]
 
 	data["c_aggregate"] = int(zeros(NUM_DOCS))
 	
@@ -160,8 +160,10 @@ end
 
 
 function resample(time)
-	weight_vector = [s["weight"] for s in values(particles[time])]
-	weight_vector = float64(weight_vector)
+	weight_vector=zeros(NUM_PARTICLES)
+	for i=1:NUM_PARTICLES
+		weight_vector[i] = particles[time][i]["weight"]
+	end
 	particles_new_indx = int(zeros(length(particles[time])))
 	particles_temporary = deepcopy(particles[time])
 	
@@ -369,23 +371,33 @@ function path_integral(time, N)
 
 	################## LOOKAHEAD ##########################
 	"""println("----[[BEFORE]]----")
-		#println(particles[time][N]["hidden_state"]["lambda"])
+		println(particles[time][N]["hidden_state"]["lambda"])
 		println(particles[time][N]["hidden_state"]["soft_lambda"])
 		println(particles[time][N]["hidden_state"]["soft_u"])
 		println(particles[time][N]["hidden_state"]["soft_v"])"""
 
-	println("CLUSTERING ASSIGNMENT [1, ",sampled_cid, "]")
-	if time + LOOKAHEAD_DELTA <= NUM_DOCS
+	#println("CLUSTERING ASSIGNMENT [1, ",sampled_cid, "]")
+	
+	if time < NUM_DOCS && DELTA > 0
+		DELTA_TIME = min(LOOKAHEAD_DELTA, NUM_DOCS - time - 1)
+		#println(DELTA_TIME, " ", NUM_DOCS - time)
+		history = myappend(particles[time-1][N]["hidden_state"]["c_aggregate"], sampled_cid)
 		lookahead_logprobability = get_margin_loglikelihood(
-			weight, root_support, time+1, LOOKAHEAD_DELTA, sampled_cid, N, data, 
+			weight, root_support, time+1, DELTA_TIME, sampled_cid, N, data, 
 			deepcopy(particles[time][N]["hidden_state"]["soft_lambda"]),
 			deepcopy(particles[time][N]["hidden_state"]["soft_u"]),
-			deepcopy(particles[time][N]["hidden_state"]["soft_v"])
+			deepcopy(particles[time][N]["hidden_state"]["soft_v"]),
+			history
 		)
 		#println(weight," >> ",lookahead_logprobability)
 		weight += lookahead_logprobability
 	end
-	@bp
+
+	"""println("----[[AFTER]]----")
+		println(particles[time][N]["hidden_state"]["lambda"])
+		println(particles[time][N]["hidden_state"]["soft_lambda"])
+		println(particles[time][N]["hidden_state"]["soft_u"])
+		println(particles[time][N]["hidden_state"]["soft_v"])"""
 	return weight, sampled_cid
 end
 
@@ -476,8 +488,8 @@ if length(ARGS) > 0
 	DELTA = int(ARGS[2])
 	INTEGRAL_PATHS = int(ARGS[3])
 else
-	NUM_PARTICLES = 10#1
-	DELTA = 195 #1 will return without lookahead
+	NUM_PARTICLES = 20#1
+	DELTA = 4 #1 will return without lookahead
 	INTEGRAL_PATHS = 2
 end
 
@@ -489,7 +501,7 @@ data = loadObservations()
 #LOOKAHEAD_DELTA = 0
 #ari_without_lookahead = run_sampler()
 
-print("\nWITH LOOKAHEAD: ")
+#print("\nWITH LOOKAHEAD: ")
 LOOKAHEAD_DELTA = DELTA
 ari_with_lookahead = run_sampler()
 
