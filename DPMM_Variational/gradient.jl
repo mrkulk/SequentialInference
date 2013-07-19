@@ -70,7 +70,7 @@ function update_all_not_chosen_ks(sampled_cid, support, time, N, max_root_suppor
 	for cid in support
 		if cid != sampled_cid && cid < max_root_support
 		
-			is_new_cid = haskey(particles[time][N]["hidden_state"]["soft_lambda"], cid)
+			is_new_cid = (has(particles[time][N]["hidden_state"]["soft_lambda"], cid) == false)
 
 			if is_new_cid == true
 				particles[time][N]["hidden_state"]["soft_lambda"][cid] = Dict()

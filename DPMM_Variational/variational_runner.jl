@@ -44,7 +44,7 @@ const ENUMERATION = 0
 srand(10)
 
 WORDS_PER_DOC = 10
-NUM_DOCS = 200
+NUM_DOCS = 200	#200
 NUM_TOPICS = NaN
 V = NaN
 state = Dict()
@@ -358,7 +358,7 @@ function path_integral(time, N)
 	wordArr = getWordArr(data,time)
 	weight, sampled_cid = sample_cid(z_posterior_array_probability, z_posterior_array_cid)
 
-	if haskey(particles[time][N]["hidden_state"]["lambda"], sampled_cid) == true
+	if has(particles[time][N]["hidden_state"]["lambda"], sampled_cid) == true
 		update_existingcluster_statistics(sampled_cid, data,time,wordArr, weight, N, lambda_sufficient_stats_ARR[sampled_cid])
 	else
 		update_newcluster_statistics(sampled_cid, data,time,wordArr, weight, N)
@@ -374,7 +374,8 @@ function path_integral(time, N)
 		println(particles[time][N]["hidden_state"]["soft_u"])
 		println(particles[time][N]["hidden_state"]["soft_v"])"""
 
-	if time + LOOKAHEAD_DELTA < NUM_DOCS
+	println("CLUSTERING ASSIGNMENT [1, ",sampled_cid, "]")
+	if time + LOOKAHEAD_DELTA <= NUM_DOCS
 		lookahead_logprobability = get_margin_loglikelihood(
 			weight, root_support, time+1, LOOKAHEAD_DELTA, sampled_cid, N, data, 
 			deepcopy(particles[time][N]["hidden_state"]["soft_lambda"]),
@@ -384,7 +385,7 @@ function path_integral(time, N)
 		#println(weight," >> ",lookahead_logprobability)
 		weight += lookahead_logprobability
 	end
-
+	@bp
 	return weight, sampled_cid
 end
 
@@ -476,7 +477,7 @@ if length(ARGS) > 0
 	INTEGRAL_PATHS = int(ARGS[3])
 else
 	NUM_PARTICLES = 10#1
-	DELTA = 0 #1 will return without lookahead
+	DELTA = 195 #1 will return without lookahead
 	INTEGRAL_PATHS = 2
 end
 
