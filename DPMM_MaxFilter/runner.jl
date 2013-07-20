@@ -35,6 +35,7 @@ const ENUMERATION = 0
 #LOOKAHEAD_DELTA = 10#10
 #const INTEGRAL_PATHS = 2#2
 
+srand(1)
 
 const DIMENSIONS = 2
 NUM_POINTS = 100
@@ -254,7 +255,11 @@ function get_posterior_zj(cid, c_aggregate,time)
 			obs_var = get_empirical_mean(data["get_data_arr"][d][time])
 		else
 			indices = myappend(indices, time)
-			obs_mean = get_empirical_mean(data["get_data_arr"][d][indices])#[1:time])
+			obs_mean = try 
+				get_empirical_mean(data["get_data_arr"][d][indices])#[1:time])
+			catch
+				@bp
+			end
 			obs_var = get_empirical_variance(data["get_data_arr"][d][indices], obs_mean)#[1:time], obs_mean)
 		end
 		posterior += posterior_z_helper(cid_cardinality, total_pts, a, b, tao, alpha ,eta, obs_mean, obs_var)
@@ -470,7 +475,7 @@ function run_sampler()
 		end
 
 		if MAXFILTERING == 1
-			maxFilter(particles[time], particles[time-1], maxfilter_probability_array, maxfilter_cid_array, NUM_PARTICLES)	
+			stratifiedMaxFiltering(particles[time], particles[time-1], maxfilter_probability_array, maxfilter_cid_array, NUM_PARTICLES)	
 		else
 			normalizeWeights(time)
 			resample(time)

@@ -43,7 +43,7 @@ const ENUMERATION = 0
 
 srand(10)
 
-WORDS_PER_DOC = 100
+WORDS_PER_DOC = 1000
 NUM_DOCS = 10	#200
 NUM_TOPICS = NaN
 V = NaN
@@ -97,7 +97,8 @@ function loadObservations()
 	data = Dict()
 	theta, pi, NUM_TOPICS, V = dataset1()
 
-	topics = [1,1,1,2,2,2,2,2,2,2]
+	topics = [1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]
+	NUM_DOCS = length(topics)
 
 	data["c_aggregate"] = int(zeros(NUM_DOCS))
 	
@@ -342,8 +343,13 @@ end
 function path_integral(time, N)
 
 	root_support = particles[time-1][N]["hidden_state"]["c_aggregate"]
+	root_support = unique(root_support)
+
 	max_root_support= max(root_support)
-	root_support = unique(myappend(root_support, max_root_support+1))
+
+	if particles[time-1][N]["hidden_state"]["c_aggregate"][time-1] == max_root_support
+		root_support = unique(myappend(root_support, max_root_support+1))
+	end
 
 	max_root_support=max(root_support)
 	
@@ -358,15 +364,26 @@ function path_integral(time, N)
 	end
 
 	wordArr = getWordArr(data,time)
+	
 	weight, sampled_cid = sample_cid(z_posterior_array_probability, z_posterior_array_cid)
 
-	if has(particles[time][N]["hidden_state"]["lambda"], sampled_cid) == true
-		update_existingcluster_statistics(sampled_cid, data,time,wordArr, weight, N, lambda_sufficient_stats_ARR[sampled_cid])
-	else
-		update_newcluster_statistics(sampled_cid, data,time,wordArr, weight, N)
+	if time == 4
+		if N == 2
+			weight = z_posterior_array_probability[2]
+			sampled_cid = z_posterior_array_cid[2]
+		end
 	end
 
-	update_all_not_chosen_ks(sampled_cid, root_support, time, N, max_root_support)
+	#println("-=-=-=-=-=-=-=-=-=-=-=-=-")
+	#println("OUTSIDE: ", get_normalized_probabilities(z_posterior_array_probability))
+
+	if sampled_cid == max_root_support #has(particles[time][N]["hidden_state"]["lambda"], sampled_cid) == true
+		update_newcluster_statistics(sampled_cid, data,time,wordArr, weight, N)
+	else
+		update_existingcluster_statistics(sampled_cid, data,time,wordArr, weight, N, lambda_sufficient_stats_ARR[sampled_cid])
+	end
+
+	#update_all_not_chosen_ks(sampled_cid, root_support, time, N, max_root_support)
 
 
 	################## LOOKAHEAD ##########################
@@ -382,15 +399,17 @@ function path_integral(time, N)
 		DELTA_TIME = min(LOOKAHEAD_DELTA, NUM_DOCS - time - 1)
 		#println(DELTA_TIME, " ", NUM_DOCS - time)
 		history = myappend(particles[time-1][N]["hidden_state"]["c_aggregate"], sampled_cid)
+		prev_support = unique(history)
 		lookahead_logprobability = get_margin_loglikelihood(
-			weight, root_support, time+1, DELTA_TIME, sampled_cid, N, data, 
+			history, prev_support, time+1, DELTA_TIME, sampled_cid, N, data)
+			"""deepcopy(particles[time][N]["hidden_state"]["lambda"]),
 			deepcopy(particles[time][N]["hidden_state"]["soft_lambda"]),
 			deepcopy(particles[time][N]["hidden_state"]["soft_u"]),
-			deepcopy(particles[time][N]["hidden_state"]["soft_v"]),
-			history
-		)
-		#println(weight," >> ",lookahead_logprobability)
+			deepcopy(particles[time][N]["hidden_state"]["soft_v"])"""
+		#print("orig:", weight," >> mod:")
 		weight += lookahead_logprobability
+		#print(weight, "\n")
+		@bp
 	end
 
 	"""println("----[[AFTER]]----")
@@ -447,7 +466,7 @@ function run_sampler()
 
 		###### PARTICLE CREATION and EVOLUTION #######
 		particles[time]=Dict()
-
+		println("TRUET: ", true_topics[1:time])			
 		for N=1:NUM_PARTICLES
 
 			if _DEBUG == 1
@@ -467,15 +486,19 @@ function run_sampler()
 			
 			particles[time][N]["hidden_state"]["c"] = sampled_cid
 			particles[time][N]["hidden_state"]["c_aggregate"] = myappend(particles[time-1][N]["hidden_state"]["c_aggregate"], sampled_cid)
+
+			
+			println("CHOSEN:", sampled_cid, " W:", particles[time][N]["weight"], " INFER:", particles[time][N]["hidden_state"]["c_aggregate"])
 		end
+		println("=-=-=-=-=-=")
 
 		normalizeWeights(time)
 		resample(time)
 		recycle(time)
 		#println(particles)
-		if mod(time, 1) == 0
-			plotPointsfromChain(time)
-		end
+		#if mod(time, 1) == 0
+		#	plotPointsfromChain(time)
+		#end
 	end
 
 end
@@ -488,8 +511,8 @@ if length(ARGS) > 0
 	DELTA = int(ARGS[2])
 	INTEGRAL_PATHS = int(ARGS[3])
 else
-	NUM_PARTICLES = 20#1
-	DELTA = 4 #1 will return without lookahead
+	NUM_PARTICLES = 2#1
+	DELTA = 20#20 will return without lookahead
 	INTEGRAL_PATHS = 2
 end
 

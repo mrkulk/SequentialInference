@@ -46,8 +46,8 @@ function update_newcluster_statistics(sampled_cid, data, time, wordArr, posterio
 	for word = 1:V
 		particles[time][N]["hidden_state"]["lambda"][sampled_cid][word] = hyperparameters["eta"] + wordArr[word]
 	end
-	gradient_soft_lambda_u( sampled_cid, wordArr, posterior, time, N, true)
- 	gradient_v(sampled_cid, time, N, true)
+	#gradient_soft_lambda_u( sampled_cid, wordArr, posterior, time, N, true)
+ 	#gradient_v(sampled_cid, time, N, true)
 end
 
 
@@ -56,8 +56,8 @@ function update_existingcluster_statistics(sampled_cid, data, time, wordArr, pos
 	for word=1:V
 		particles[time][N]["hidden_state"]["lambda"][sampled_cid][word] = lambda_statistics[word]
 	end
-	gradient_soft_lambda_u(sampled_cid, wordArr, posterior, time, N, false)
-	gradient_v(sampled_cid, time, N, false)
+	#gradient_soft_lambda_u(sampled_cid, wordArr, posterior, time, N, false)
+	#gradient_v(sampled_cid, time, N, false)
 end
 
 

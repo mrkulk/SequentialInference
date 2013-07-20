@@ -81,8 +81,9 @@ function get_normalized_probabilities(z_posterior_array_probability)
 end
 
 
-function update_helper(cid, sampled_cid, soft_lambda, soft_u, soft_v, posterior, wordArr, ITER)
+function update_helper(original_time, cid, sampled_cid, soft_lambda, soft_u, soft_v, posterior, wordArr, ITER, DELTA_TIME)
 	eta = hyperparameters["eta"]; alpha = hyperparameters["a"]
+	
 	is_new_cid = (has(soft_lambda,cid) == false)
 
 	LEARNING_RATE = 1/ITER
@@ -90,44 +91,46 @@ function update_helper(cid, sampled_cid, soft_lambda, soft_u, soft_v, posterior,
 	if is_new_cid == true
 		soft_lambda[cid] = Dict()
 		soft_u[cid]=0; soft_v[cid]=0;
-		sufficient_stats =0
+		sufficient_stats = 0  #[[FIXME]]#[[FIXME]]#[[FIXME]]#[[FIXME]]#[[FIXME]]
 	else
-		sufficient_stats = int(sampled_cid > cid)
+		sufficient_stats = int(sampled_cid > cid)     #[[FIXME]]#[[FIXME]]#[[FIXME]]#[[FIXME]]#[[FIXME]]
 	end
 
 	for word=1:V
 		if is_new_cid == true
-			soft_lambda[cid][word] = LEARNING_RATE*(eta + NUM_DOCS*(posterior*wordArr[word]))
+			soft_lambda[cid][word] = LEARNING_RATE*(eta + (original_time+DELTA_TIME)*(posterior*wordArr[word]))
 		else
-			soft_lambda[cid][word]=soft_lambda[cid][word] + LEARNING_RATE*(-soft_lambda[cid][word] + eta + NUM_DOCS*(posterior*wordArr[word]))
+			soft_lambda[cid][word]=soft_lambda[cid][word] + LEARNING_RATE*(-soft_lambda[cid][word] + eta + (original_time+DELTA_TIME)*(posterior*wordArr[word]))
 		end
 	end
-	soft_u[cid] = soft_u[cid] + LEARNING_RATE*(-soft_u[cid] + 1 + NUM_DOCS*posterior)
-	soft_v[cid] = soft_v[cid] + LEARNING_RATE*(-soft_v[cid] + alpha + NUM_DOCS*sufficient_stats)
+	soft_u[cid] = soft_u[cid] + LEARNING_RATE*(-soft_u[cid] + 1 + (original_time+DELTA_TIME)*posterior)
+	soft_v[cid] = soft_v[cid] + LEARNING_RATE*(-soft_v[cid] + alpha + (original_time+DELTA_TIME)*sufficient_stats)
 
 	return soft_lambda, soft_u, soft_v
 end
 
 
-function update_statistics(current_support,  posterior,sampled_cid, data, time, soft_lambda, soft_u, soft_v, ITER)
+function update_statistics(original_time, current_support,  posterior,sampled_cid, data, time, soft_lambda, soft_u, soft_v, ITER, CONDITIONAL, DELTA_TIME)
 	wordArr = getWordArr(data, time)
-	eta = hyperparameters["eta"]; alpha=hyperparameters["a"]
-
 	max_cid = max(current_support)
 
 	for cid in current_support
-		#@bp
 		posterior = -1; flag=-1;
-		if cid == sampled_cid# && cid == max_cid
-			flag = 1; posterior = 1
-		end 
-		if cid != sampled_cid && cid < max_cid
-			flag = 1; #[[FIXME]]
-			posterior = 0
+
+		if CONDITIONAL == 1
+			flag = 1; posterior = 1;
+		else
+			if cid == sampled_cid# && cid == max_cid
+				flag = 1; posterior = 1
+			end 
+			if cid != sampled_cid && cid < max_cid
+				flag = 1; 
+				posterior = 0
+			end
 		end
 
 		if flag == 1
-			update_helper(cid, sampled_cid, soft_lambda, soft_u, soft_v, posterior, wordArr, ITER)
+			update_helper(original_time, cid, sampled_cid, soft_lambda, soft_u, soft_v, posterior, wordArr, ITER, DELTA_TIME)
 		end
 	end
 
@@ -138,13 +141,18 @@ end
 
 function get_chibbs(soft_lambda, soft_u, soft_v)
 	mean_lambda = deepcopy(soft_lambda); mean_u = deepcopy(soft_u);
+	mean_Z = 0
 	for topic in collect(keys(soft_lambda))
 		lambda_Z = sum(collect(values(mean_lambda[topic])))
 		for word = 1:V
 			mean_lambda[topic][word] /= lambda_Z
-		end
-
+		end 
 		mean_u[topic] /= (mean_u[topic] + soft_v[topic])
+		mean_Z += mean_u[topic]
+	end
+
+	for topic in collect(keys(mean_u))
+		mean_u[topic] /= mean_Z
 	end
 
 	return mean_lambda, mean_u
@@ -171,15 +179,38 @@ function chibbs_loglikelihood(mean_lambda, mean_u, data, _start, _end)
 end
 
 
-function get_margin_loglikelihood(prev_weight, prev_support, time, LOOKAHEAD_DELTA, prev_cid, N, data, soft_lambda,soft_u,soft_v, history)
-	if LOOKAHEAD_DELTA == 0
+
+
+function initializeStatistics(history_support)
+	soft_lambda = Dict(); soft_u = Dict(); soft_v = Dict();
+	eta = hyperparameters["eta"]; a = hyperparameters["a"]
+
+	for topic in history_support
+		soft_lambda[topic] = Dict()
+		for word=1:V
+			soft_lambda[topic][word] = eta
+		end
+		soft_u[topic] = 1
+		soft_v[topic] = a
+	end
+	return soft_lambda, soft_u, soft_v
+end
+
+
+
+
+function get_margin_loglikelihood(history_c_aggregate, prev_support, time, DELTA_TIME, prev_cid, N, data)
+	if DELTA_TIME == 0
 		return 0
 	end
 
-	current_support = deepcopy(prev_support)
+	history_support = unique(history_c_aggregate)
+	soft_lambda, soft_u, soft_v = initializeStatistics(history_support)
 
-	VARIATIONAL_ITERATIONS = 50
-	distributionArr = Dict()
+	#current_support = myappend(prev_support, max(prev_support)+1)
+	current_support = deepcopy(history_support)
+
+	VARIATIONAL_ITERATIONS = 100
 
 	DEBUG = false
 
@@ -190,27 +221,87 @@ function get_margin_loglikelihood(prev_weight, prev_support, time, LOOKAHEAD_DEL
 		println(soft_v)
 	end
 
+	FIRST_TIME_IN_LOOKAHEAD = 1
+
 	c_aggregate = []
+	
+
 	for iter=1:VARIATIONAL_ITERATIONS
 		c_aggregate = []
 		#println("-=-=-=-=")
-		for t=time:time+LOOKAHEAD_DELTA
+		for t=1:time+DELTA_TIME
+			############ INSIDE LOOKAHEAD ##########
+"""	WORKS		if true#t >= time
+				if FIRST_TIME_IN_LOOKAHEAD == 1 && t == time
+					FIRST_TIME_IN_LOOKAHEAD = 0
+					current_support = myappend(current_support, max(current_support)+1)
+					#current_support = [1]
+				end
+				z_posterior_array_probability = []
+				z_posterior_array_cid = []
+				max_support_value = max(current_support)
 
-			##current_support = myappend(prev_support, max(prev_support)+1)
-			z_posterior_array_probability = []
-			z_posterior_array_cid = []
-			max_support_value = max(current_support)
+				for j in current_support
+					zj_probability = sample_q_variational(j, current_support, t, N, max_support_value, soft_lambda, soft_u,soft_v, data)
+					z_posterior_array_probability = myappend(z_posterior_array_probability, zj_probability)
+					z_posterior_array_cid = myappend(z_posterior_array_cid, j)
+				end
 
-			for j in current_support
-				zj_probability = sample_q_variational(j, current_support, t, N, max_support_value, soft_lambda, soft_u,soft_v, data)
-				z_posterior_array_probability = myappend(z_posterior_array_probability, zj_probability)
-				z_posterior_array_cid = myappend(z_posterior_array_cid, j)
+				## Choose support (j) by sampling cid from gibbs using mult
+				posterior, sampled_cid = sample_cid(z_posterior_array_probability, z_posterior_array_cid)
+				CONDITIONAL = 0
+
+				if t < time
+					sampled_cid = history_c_aggregate[t]
+					CONDITIONAL = 1
+				end
+			end
+			#else
+			############### OUTSIDE LOOKAHEAD ##############
+			#	sampled_cid = history_c_aggregate[t]
+			#	posterior = 1
+			#	current_support = unique(history_c_aggregate[1:t])#history_support
+			#	CONDITIONAL = 1
+			#end"""
+
+			if t >= time
+				if FIRST_TIME_IN_LOOKAHEAD == 1 && t == time
+					FIRST_TIME_IN_LOOKAHEAD = 0
+					current_support = myappend(current_support, max(current_support)+1)
+					#current_support = [1]
+				end
+				z_posterior_array_probability = []
+				z_posterior_array_cid = []
+				max_support_value = max(current_support)
+				for j in current_support
+					zj_probability = sample_q_variational(j, current_support, t, N, max_support_value, soft_lambda, soft_u,soft_v, data)
+					z_posterior_array_probability = myappend(z_posterior_array_probability, zj_probability)
+					z_posterior_array_cid = myappend(z_posterior_array_cid, j)
+				end
+
+				#if time == 4 && N == 2
+				#	@bp
+				#end
+
+				## Choose support (j) by sampling cid from gibbs using mult
+				posterior, sampled_cid = sample_cid(z_posterior_array_probability, z_posterior_array_cid)
+				CONDITIONAL = 0
+				if t < time
+					sampled_cid = history_c_aggregate[t]
+					CONDITIONAL = 1
+				end
+			else
+			############### OUTSIDE LOOKAHEAD ##############
+				sampled_cid = history_c_aggregate[t]
+				posterior = 1
+				current_support = unique(history_c_aggregate[1:t])#history_support
+				CONDITIONAL = 1
 			end
 
-			## Choose support (j) by sampling cid from gibbs using mult
-			posterior, sampled_cid = sample_cid(z_posterior_array_probability, z_posterior_array_cid)
+			soft_lambda, soft_u, soft_v = 
+				update_statistics( time, current_support, posterior,sampled_cid, data, t, 
+									soft_lambda, soft_u, soft_v, iter, CONDITIONAL, DELTA_TIME )
 
-			soft_lambda, soft_u, soft_v = update_statistics(current_support, posterior,sampled_cid, data, t, soft_lambda, soft_u, soft_v, iter)
 			c_aggregate = myappend(c_aggregate, sampled_cid)
 
 			if DEBUG
@@ -220,24 +311,33 @@ function get_margin_loglikelihood(prev_weight, prev_support, time, LOOKAHEAD_DEL
 				println("\n")
 			end
 
-			max_cid = max(current_support)
-			if sampled_cid == max_cid
-				current_support = myappend(current_support, max_cid + 1 )
+			############ INSIDE LOOKAHEAD ##########
+			if t >= time
+				if sampled_cid == max_support_value
+					current_support = myappend(current_support, max_support_value + 1 )
+				end
 			end
+
 		end
 
 		#if DEBUG
-		#println("ITER:",iter, " ARI:", metrics.adjusted_rand_score(c_aggregate, true_topics[time:time+LOOKAHEAD_DELTA]))
+		#println("--------------------------------------------")
+		#println(c_aggregate)
+		#println("ITER:",iter, " ARI:", metrics.adjusted_rand_score(c_aggregate, true_topics[1:time+LOOKAHEAD_DELTA]))
 		#end
 	end
 
 	mean_lambda, mean_u = get_chibbs(soft_lambda, soft_u, soft_v)
-	logL = chibbs_loglikelihood(mean_lambda, mean_u, data, time, time+LOOKAHEAD_DELTA)
-
-	ARI = metrics.adjusted_rand_score(c_aggregate, true_topics[time:time+LOOKAHEAD_DELTA])
-	"""println("ARI:", ARI, " CHIBBS:", logL, " mean:", mean_lambda)
-	println(soft_lambda)
-	print(history); print(c_aggregate, "\n\n")"""
+	logL = chibbs_loglikelihood(mean_lambda, mean_u, data, time, time+DELTA_TIME)
+	println("CAGG_LOOKAHEAD: ",c_aggregate )
+	"""ARI = metrics.adjusted_rand_score(c_aggregate, true_topics[1:time+DELTA_TIME])
+	println("ARI:", ARI, " CHIBBS:", logL) 
+	println("soft_u:", soft_u)
+	println("soft_v:", soft_v)
+	println("mean_lambda:", mean_lambda)
+	println("mean_u:", mean_u)
+	println("soft_lambda:", soft_lambda)
+	print(history_c_aggregate); print(c_aggregate, "\n\n")"""
 	return logL
 end
 
