@@ -43,7 +43,7 @@ const ENUMERATION = 0
 
 srand(10)
 
-WORDS_PER_DOC = 1000
+WORDS_PER_DOC = 100
 NUM_DOCS = 10	#200
 NUM_TOPICS = NaN
 V = NaN
@@ -97,7 +97,7 @@ function loadObservations()
 	data = Dict()
 	theta, pi, NUM_TOPICS, V = dataset1()
 
-	topics = [1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]
+	topics = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]
 	NUM_DOCS = length(topics)
 
 	data["c_aggregate"] = int(zeros(NUM_DOCS))
@@ -367,12 +367,12 @@ function path_integral(time, N)
 	
 	weight, sampled_cid = sample_cid(z_posterior_array_probability, z_posterior_array_cid)
 
-	if time == 4
+	"""if time == 4
 		if N == 2
 			weight = z_posterior_array_probability[2]
 			sampled_cid = z_posterior_array_cid[2]
 		end
-	end
+	end"""
 
 	#println("-=-=-=-=-=-=-=-=-=-=-=-=-")
 	#println("OUTSIDE: ", get_normalized_probabilities(z_posterior_array_probability))
@@ -409,7 +409,7 @@ function path_integral(time, N)
 		#print("orig:", weight," >> mod:")
 		weight += lookahead_logprobability
 		#print(weight, "\n")
-		@bp
+		#@bp
 	end
 
 	"""println("----[[AFTER]]----")
@@ -511,7 +511,7 @@ if length(ARGS) > 0
 	DELTA = int(ARGS[2])
 	INTEGRAL_PATHS = int(ARGS[3])
 else
-	NUM_PARTICLES = 2#1
+	NUM_PARTICLES = 20#1
 	DELTA = 20#20 will return without lookahead
 	INTEGRAL_PATHS = 2
 end

@@ -210,7 +210,7 @@ function get_margin_loglikelihood(history_c_aggregate, prev_support, time, DELTA
 	#current_support = myappend(prev_support, max(prev_support)+1)
 	current_support = deepcopy(history_support)
 
-	VARIATIONAL_ITERATIONS = 100
+	VARIATIONAL_ITERATIONS = 20
 
 	DEBUG = false
 
@@ -231,38 +231,6 @@ function get_margin_loglikelihood(history_c_aggregate, prev_support, time, DELTA
 		#println("-=-=-=-=")
 		for t=1:time+DELTA_TIME
 			############ INSIDE LOOKAHEAD ##########
-"""	WORKS		if true#t >= time
-				if FIRST_TIME_IN_LOOKAHEAD == 1 && t == time
-					FIRST_TIME_IN_LOOKAHEAD = 0
-					current_support = myappend(current_support, max(current_support)+1)
-					#current_support = [1]
-				end
-				z_posterior_array_probability = []
-				z_posterior_array_cid = []
-				max_support_value = max(current_support)
-
-				for j in current_support
-					zj_probability = sample_q_variational(j, current_support, t, N, max_support_value, soft_lambda, soft_u,soft_v, data)
-					z_posterior_array_probability = myappend(z_posterior_array_probability, zj_probability)
-					z_posterior_array_cid = myappend(z_posterior_array_cid, j)
-				end
-
-				## Choose support (j) by sampling cid from gibbs using mult
-				posterior, sampled_cid = sample_cid(z_posterior_array_probability, z_posterior_array_cid)
-				CONDITIONAL = 0
-
-				if t < time
-					sampled_cid = history_c_aggregate[t]
-					CONDITIONAL = 1
-				end
-			end
-			#else
-			############### OUTSIDE LOOKAHEAD ##############
-			#	sampled_cid = history_c_aggregate[t]
-			#	posterior = 1
-			#	current_support = unique(history_c_aggregate[1:t])#history_support
-			#	CONDITIONAL = 1
-			#end"""
 
 			if t >= time
 				if FIRST_TIME_IN_LOOKAHEAD == 1 && t == time
@@ -329,7 +297,7 @@ function get_margin_loglikelihood(history_c_aggregate, prev_support, time, DELTA
 
 	mean_lambda, mean_u = get_chibbs(soft_lambda, soft_u, soft_v)
 	logL = chibbs_loglikelihood(mean_lambda, mean_u, data, time, time+DELTA_TIME)
-	println("CAGG_LOOKAHEAD: ",c_aggregate )
+	#println("CAGG_LOOKAHEAD: ",c_aggregate )
 	"""ARI = metrics.adjusted_rand_score(c_aggregate, true_topics[1:time+DELTA_TIME])
 	println("ARI:", ARI, " CHIBBS:", logL) 
 	println("soft_u:", soft_u)
