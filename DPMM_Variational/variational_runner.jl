@@ -41,10 +41,11 @@ const ENUMERATION = 0
 #LOOKAHEAD_DELTA = 10#10
 #const INTEGRAL_PATHS = 2#2
 
-srand(10)
+#Interesting seeds: 10(delta=20), 109
+srand(133) #10 #109
 
-WORDS_PER_DOC = 100
-NUM_DOCS = 10	#200
+WORDS_PER_DOC = 10
+NUM_DOCS = 50	#200
 NUM_TOPICS = NaN
 V = NaN
 state = Dict()
@@ -97,8 +98,8 @@ function loadObservations()
 	data = Dict()
 	theta, pi, NUM_TOPICS, V = dataset1()
 
-	topics = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]
-	NUM_DOCS = length(topics)
+	topics = []# [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]
+	#NUM_DOCS = length(topics)
 
 	data["c_aggregate"] = int(zeros(NUM_DOCS))
 	
@@ -466,7 +467,7 @@ function run_sampler()
 
 		###### PARTICLE CREATION and EVOLUTION #######
 		particles[time]=Dict()
-		println("TRUET: ", true_topics[1:time])			
+		println("TRUET:", true_topics[1:time])			
 		for N=1:NUM_PARTICLES
 
 			if _DEBUG == 1
@@ -487,8 +488,13 @@ function run_sampler()
 			particles[time][N]["hidden_state"]["c"] = sampled_cid
 			particles[time][N]["hidden_state"]["c_aggregate"] = myappend(particles[time-1][N]["hidden_state"]["c_aggregate"], sampled_cid)
 
-			
-			println("CHOSEN:", sampled_cid, " W:", particles[time][N]["weight"], " INFER:", particles[time][N]["hidden_state"]["c_aggregate"])
+			misses = 0
+			for jj = 1:length(particles[time][N]["hidden_state"]["c_aggregate"])
+				if particles[time][N]["hidden_state"]["c_aggregate"][jj] != true_topics[jj]
+					misses += 1
+				end
+			end
+			println("INFER:", particles[time][N]["hidden_state"]["c_aggregate"], "Misses:", misses, " W:", particles[time][N]["weight"])
 		end
 		println("=-=-=-=-=-=")
 
@@ -512,13 +518,14 @@ if length(ARGS) > 0
 	INTEGRAL_PATHS = int(ARGS[3])
 else
 	NUM_PARTICLES = 20#1
-	DELTA = 20#20 will return without lookahead
+	DELTA = 80#20 will return without lookahead
 	INTEGRAL_PATHS = 2
 end
 
 #println(string("NUM_PARTICLES:", NUM_PARTICLES, " DELTA:", DELTA, " INTEGRAL_PATHS:", INTEGRAL_PATHS))
 
 data = loadObservations()
+
 
 #print("WITHOUT LOOKAHEAD: ")
 #LOOKAHEAD_DELTA = 0
