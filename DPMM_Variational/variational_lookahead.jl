@@ -297,7 +297,18 @@ function get_margin_loglikelihood(history_c_aggregate, prev_support, time, DELTA
 
 	mean_lambda, mean_u = get_chibbs(soft_lambda, soft_u, soft_v)
 	logL = chibbs_loglikelihood(mean_lambda, mean_u, data, time, time+DELTA_TIME)
-	#println("CAGG_LOOKAHEAD: ",c_aggregate )
+	
+	"""println("TRUET:", true_topics)
+	println("LCAGG:",c_aggregate)
+
+	misses = 0
+	for jj = 1:length(true_topics)
+		if c_aggregate[jj] != true_topics[jj]
+			misses += 1
+		end
+	end
+	println("MISSES:", misses)"""
+
 	"""ARI = metrics.adjusted_rand_score(c_aggregate, true_topics[1:time+DELTA_TIME])
 	println("ARI:", ARI, " CHIBBS:", logL) 
 	println("soft_u:", soft_u)
@@ -306,6 +317,7 @@ function get_margin_loglikelihood(history_c_aggregate, prev_support, time, DELTA
 	println("mean_u:", mean_u)
 	println("soft_lambda:", soft_lambda)
 	print(history_c_aggregate); print(c_aggregate, "\n\n")"""
+	
 	return logL
 end
 

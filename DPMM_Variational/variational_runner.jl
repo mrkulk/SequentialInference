@@ -518,14 +518,13 @@ if length(ARGS) > 0
 	INTEGRAL_PATHS = int(ARGS[3])
 else
 	NUM_PARTICLES = 20#1
-	DELTA = 80#20 will return without lookahead
+	DELTA = 50#20 will return without lookahead
 	INTEGRAL_PATHS = 2
 end
 
 #println(string("NUM_PARTICLES:", NUM_PARTICLES, " DELTA:", DELTA, " INTEGRAL_PATHS:", INTEGRAL_PATHS))
 
 data = loadObservations()
-
 
 #print("WITHOUT LOOKAHEAD: ")
 #LOOKAHEAD_DELTA = 0
