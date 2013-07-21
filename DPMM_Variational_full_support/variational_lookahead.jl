@@ -210,7 +210,7 @@ function get_margin_loglikelihood(gibbs_wt, history_c_aggregate, prev_support, t
 	#current_support = myappend(prev_support, max(prev_support)+1)
 	current_support = deepcopy(history_support)
 
-	VARIATIONAL_ITERATIONS = 5
+	VARIATIONAL_ITERATIONS = 10
 	DEBUG = false
 
 	if DEBUG

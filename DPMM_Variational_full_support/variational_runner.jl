@@ -433,7 +433,7 @@ function run_sampler()
 		###### PARTICLE CREATION and EVOLUTION #######
 		particles[time]=Dict()
 		#println("TRUET:", true_topics[1:time])		
-		do_lookahead = (rand()>0.50)	
+		do_lookahead = (rand()>0.90)	
 		for N=1:NUM_PARTICLES
 
 			if _DEBUG == 1
@@ -486,10 +486,10 @@ if length(ARGS) > 0
 	SEED = int(ARGS[3])
 	srand(SEED)
 else
-	NUM_PARTICLES = 1#1
-	#DELTA = 10#50#20 will return without lookahead
-	#SEED = 202
-	#srand(SEED)
+	NUM_PARTICLES = 20#1
+	DELTA = 30#50#20 will return without lookahead
+	SEED = 202
+	srand(SEED)
 end
 
 #println(string("NUM_PARTICLES:", NUM_PARTICLES, " DELTA:", DELTA, " INTEGRAL_PATHS:", INTEGRAL_PATHS))
