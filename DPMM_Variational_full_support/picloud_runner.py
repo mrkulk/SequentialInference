@@ -12,7 +12,7 @@ number_of_clusters = int(sys.argv[1])
 if_zero_shortlearning = sys.argv[2] # Should be "yes" or "no"
 experiment_name = sys.argv[3]"""
 
-# Usage: python picloud_runner.py 50 1 10
+# Usage: python picloud_runner.py 50 10 30
 
 
 TRIALS = int(sys.argv[1])
