@@ -86,7 +86,7 @@ function plotPointsfromChain(time,)
 		#println("------")
 	end
 	if length(ARGS) == 0
-		println("time:", time," Maximum ARI: ", max(ariArr))
+	#	println("time:", time," Maximum ARI: ", max(ariArr))
 	end
 	return max(ariArr)
 end
@@ -440,10 +440,10 @@ function run_sampler()
 
 	for time = 2:NUM_DOCS
 
-		#if length(ARGS) == 0
-			println("##################")
-			println("time: ", time)
-		#end
+		if length(ARGS) == 0
+		#	println("##################")
+		#	println("time: ", time)
+		end
 
 		###### PARTICLE CREATION and EVOLUTION #######
 		particles[time]=Dict()
@@ -519,11 +519,13 @@ GLOBAL_WORD_ARR=Dict()
 initWordArr(data)
 
 #print("WITHOUT LOOKAHEAD: ")
+srand(SEED)
 LOOKAHEAD_DELTA = 0
 ari_without_lookahead = run_sampler()
 
 
 #print("\nWITH LOOKAHEAD: ")
+srand(SEED)
 LOOKAHEAD_DELTA = DELTA
 ari_with_lookahead = run_sampler()
 
