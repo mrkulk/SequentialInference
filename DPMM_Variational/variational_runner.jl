@@ -42,7 +42,7 @@ const ENUMERATION = 0
 #const INTEGRAL_PATHS = 2#2
 
 #Interesting seeds: 10(delta=20), 109
-srand(133) #10 #109
+#srand(133) #133-b #10 #109
 
 WORDS_PER_DOC = 10
 NUM_DOCS = 50	#200
@@ -60,7 +60,6 @@ true_topics = []
 LRATE = hyperparameters["lrate"]
 
 #################### DATA LOADER AND PLOTTING ##################################
-const COLORS =[[rand(),rand(),rand()] for i =1:50]
 
 function plotPoints(data,fname)
 	for i=1:NUM_POINTS
@@ -80,16 +79,17 @@ function plotPointsfromChain(time,)
 
 		true_clusters = data["c_aggregate"][1:time]
 		inferred_clusters = particles[time][N]["hidden_state"]["c_aggregate"]
-		ariArr = myappend(ariArr, metrics.adjusted_rand_score(inferred_clusters, true_clusters))
+		ariArr = myappend(ariArr, metrics.v_measure_score(inferred_clusters, true_clusters))
+		
 		#println("------")
 		#println("TRUE:", true_clusters)
 		#println("INFR:", inferred_clusters)
 		#println("------")
 	end
-	if length(ARGS) == 0
-		println("time:", time," Maximum ARI: ", max(ariArr))
-	end
-	#return max(ariArr)
+	#if length(ARGS) == 0
+	#	println("time:", time," Maximum ARI: ", max(ariArr))
+	#end
+	return max(ariArr)
 end
 
 
@@ -105,12 +105,13 @@ function loadObservations()
 	
 	for i = 1:NUM_DOCS
 		data[i] = Dict() #Create doc
-		if length(topics) == 0
+		"""if length(topics) == 0
 			topic = rand(Multinomial(1,pi)); topic = findin(topic, 1)[1]
 		else
 			topic = topics[i]
-		end
-		#data[i]["topic"] = topic
+		end"""
+		topic = rand(Multinomial(1,pi)); topic = findin(topic, 1)[1]
+
 		true_topics=myappend(true_topics, topic)
 		data["c_aggregate"][i] = topic
 		for j = 1:WORDS_PER_DOC
@@ -461,13 +462,13 @@ function run_sampler()
 	for time = 2:NUM_DOCS
 
 		if length(ARGS) == 0
-			println("##################")
-			println("time: ", time)
+			#println("##################")
+			#println("time: ", time)
 		end
 
 		###### PARTICLE CREATION and EVOLUTION #######
 		particles[time]=Dict()
-		println("TRUET:", true_topics[1:time])			
+		#println("TRUET:", true_topics[1:time])			
 		for N=1:NUM_PARTICLES
 
 			if _DEBUG == 1
@@ -489,22 +490,22 @@ function run_sampler()
 			particles[time][N]["hidden_state"]["c_aggregate"] = myappend(particles[time-1][N]["hidden_state"]["c_aggregate"], sampled_cid)
 
 			misses = 0
-			for jj = 1:length(particles[time][N]["hidden_state"]["c_aggregate"])
+			"""for jj = 1:length(particles[time][N]["hidden_state"]["c_aggregate"])
 				if particles[time][N]["hidden_state"]["c_aggregate"][jj] != true_topics[jj]
 					misses += 1
 				end
 			end
-			println("INFER:", particles[time][N]["hidden_state"]["c_aggregate"], "Misses:", misses, " W:", particles[time][N]["weight"])
+			println("INFER:", particles[time][N]["hidden_state"]["c_aggregate"], "Misses:", misses, " W:", particles[time][N]["weight"])"""
 		end
-		println("=-=-=-=-=-=")
+		#println("=-=-=-=-=-=")
 
 		normalizeWeights(time)
 		resample(time)
 		recycle(time)
 		#println(particles)
-		#if mod(time, 1) == 0
-		#	plotPointsfromChain(time)
-		#end
+		if mod(time, NUM_DOCS) == 0
+			return plotPointsfromChain(time)
+		end
 	end
 
 end
@@ -515,26 +516,30 @@ end
 if length(ARGS) > 0
 	NUM_PARTICLES = int(ARGS[1])
 	DELTA = int(ARGS[2])
-	INTEGRAL_PATHS = int(ARGS[3])
+	#INTEGRAL_PATHS = int(ARGS[3])
+	SEED = int(ARGS[3])
+	srand(SEED)
 else
 	NUM_PARTICLES = 20#1
-	DELTA = 50#20 will return without lookahead
-	INTEGRAL_PATHS = 2
+	DELTA = 50#50#20 will return without lookahead
+	#INTEGRAL_PATHS = 2
 end
 
 #println(string("NUM_PARTICLES:", NUM_PARTICLES, " DELTA:", DELTA, " INTEGRAL_PATHS:", INTEGRAL_PATHS))
-
+const COLORS =[[rand(),rand(),rand()] for i =1:50]
 data = loadObservations()
-
 #print("WITHOUT LOOKAHEAD: ")
-#LOOKAHEAD_DELTA = 0
-#ari_without_lookahead = run_sampler()
+LOOKAHEAD_DELTA = 0
+ari_without_lookahead = run_sampler()
 
+srand(SEED)
+const COLORS =[[rand(),rand(),rand()] for i =1:50]
+data = loadObservations()
 #print("\nWITH LOOKAHEAD: ")
 LOOKAHEAD_DELTA = DELTA
 ari_with_lookahead = run_sampler()
 
-#print([ari_without_lookahead, ari_with_lookahead])"""
+print([ari_without_lookahead, ari_with_lookahead])
 
 end
 

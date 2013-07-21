@@ -211,7 +211,6 @@ function get_margin_loglikelihood(history_c_aggregate, prev_support, time, DELTA
 	current_support = deepcopy(history_support)
 
 	VARIATIONAL_ITERATIONS = 10
-
 	DEBUG = false
 
 	if DEBUG
@@ -254,10 +253,10 @@ function get_margin_loglikelihood(history_c_aggregate, prev_support, time, DELTA
 				## Choose support (j) by sampling cid from gibbs using mult
 				posterior, sampled_cid = sample_cid(z_posterior_array_probability, z_posterior_array_cid)
 				CONDITIONAL = 0
-				if t < time
+				"""if t < time
 					sampled_cid = history_c_aggregate[t]
 					CONDITIONAL = 1
-				end
+				end"""
 			else
 			############### OUTSIDE LOOKAHEAD ##############
 				sampled_cid = history_c_aggregate[t]

@@ -11,8 +11,6 @@ function dataset1()
 	[1/8,1/8,6/8]} #3 states """
 
 	pi = [1/2,1/2,0] 
-	
-
 	V = 3
 	NUM_TOPICS = 3
 	return theta, pi, NUM_TOPICS, V
