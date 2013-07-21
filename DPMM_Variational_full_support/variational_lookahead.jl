@@ -20,12 +20,9 @@ function sample_q_variational(cid, current_support, time, N, max_support_value, 
 		denominator1 = V*lgamma(eta)
 		posterior += numerator1 - denominator1 
 		numerator2 = 0;
-		wordArr = zeros(V)
-		words_in_this_doc = collect(values(data[time]))
+		wordArr = getWordArr(data,time)
 		for word = 1:V
-			indices = findin(words_in_this_doc, word)
-			tmp=length(indices)
-			wordArr[word] = tmp
+			tmp=wordArr[word]
 			numerator2 += lgamma(eta + tmp)
 		end
 		denominator2 = lgamma(eta*V + length(data[time]))
@@ -43,13 +40,11 @@ function sample_q_variational(cid, current_support, time, N, max_support_value, 
 		numerator1 = 0; tmp_denominator1 = 0; #this is first side page 5 from Chong et al
 		numerator2 = 0; tmp_denominator2 = 0; #this is second side page 5 from Chong et al
 		denominator1 = 0;
-		words_in_this_doc = collect(values(data[time]))
-		wordArr = zeros(V)
-		
+
+		wordArr = getWordArr(data,time)
+	
 		for word = 1:V
-			indices = findin(words_in_this_doc, word)
-			tmp=length(indices)
-			wordArr[word] = tmp
+			tmp=wordArr[word]
 
 			numerator2_tmp = soft_lambda[cid][word] + tmp
 			numerator2 += lgamma(numerator2_tmp)
@@ -210,7 +205,7 @@ function get_margin_loglikelihood(gibbs_wt, history_c_aggregate, prev_support, t
 	#current_support = myappend(prev_support, max(prev_support)+1)
 	current_support = deepcopy(history_support)
 
-	VARIATIONAL_ITERATIONS = 15
+	VARIATIONAL_ITERATIONS = 10
 	DEBUG = false
 
 	if DEBUG

@@ -242,7 +242,22 @@ function sample_cid(z_posterior_array_probability, z_posterior_array_cid)
 end
 
 
+function initWordArr(data)
+	for t=1:NUM_DOCS
+		words_in_this_doc = collect(values(data[t]))
+		wordArr = zeros(V)
+		for word = 1:V
+			indices = findin(words_in_this_doc, word)
+			tmp=length(indices)
+			wordArr[word] = tmp
+		end
+		GLOBAL_WORD_ARR[t] = wordArr
+	end
+end
+
 function getWordArr(data, time)
+	return GLOBAL_WORD_ARR[time]
+	"""
 	words_in_this_doc = collect(values(data[time]))
 	wordArr = zeros(V)
 	for word = 1:V
@@ -250,7 +265,7 @@ function getWordArr(data, time)
 		tmp=length(indices)
 		wordArr[word] = tmp
 	end
-	return wordArr
+	return wordArr"""
 end
 
 
@@ -425,15 +440,20 @@ function run_sampler()
 
 	for time = 2:NUM_DOCS
 
-		if length(ARGS) == 0
+		#if length(ARGS) == 0
 			println("##################")
 			println("time: ", time)
-		end
+		#end
 
 		###### PARTICLE CREATION and EVOLUTION #######
 		particles[time]=Dict()
 		#println("TRUET:", true_topics[1:time])		
-		do_lookahead = (rand()>0)	
+		do_lookahead = (rand()>0.9)
+		"""if mod(time, DELTA) == 0
+			do_lookahead = true
+		else
+			do_lookahead = false
+		end"""
 		for N=1:NUM_PARTICLES
 
 			if _DEBUG == 1
@@ -486,14 +506,17 @@ if length(ARGS) > 0
 	SEED = int(ARGS[3])
 	srand(SEED)
 else
-	NUM_PARTICLES = 20#1
-	DELTA = 30#50#20 will return without lookahead
-	SEED = 202
+	NUM_PARTICLES = 1#1
+	DELTA = 10#50#20 will return without lookahead
+	SEED = 9699
 	srand(SEED)
 end
 
 #println(string("NUM_PARTICLES:", NUM_PARTICLES, " DELTA:", DELTA, " INTEGRAL_PATHS:", INTEGRAL_PATHS))
 data = loadObservations()
+
+GLOBAL_WORD_ARR=Dict()
+initWordArr(data)
 
 #print("WITHOUT LOOKAHEAD: ")
 LOOKAHEAD_DELTA = 0
