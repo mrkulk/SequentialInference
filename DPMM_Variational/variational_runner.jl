@@ -9,7 +9,6 @@ using Distributions
 using Debug
 using PyCall
 using Base.Collections
-using MATLAB
 using NumericExtensions
 require("dataset.jl")
 require("variational_lookahead.jl")
