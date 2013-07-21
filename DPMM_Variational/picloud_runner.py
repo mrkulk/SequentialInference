@@ -11,7 +11,7 @@ number_of_clusters = int(sys.argv[1])
 if_zero_shortlearning = sys.argv[2] # Should be "yes" or "no"
 experiment_name = sys.argv[3]"""
 
-# Usage: python picloud_runner.py 150 20 10
+# Usage: python picloud_runner.py 150 50 10
 
 
 TRIALS = int(sys.argv[1])
@@ -27,7 +27,7 @@ def run_on_instance(trial_id):
   os.environ['DISPLAY'] = ":1"
   print "Starting"
   ls_output = subprocess.Popen(["/home/picloud/julia/julia", "variational_runner.jl", str(NUM_PARTICLES), str(DELTA), str(trial_id)], \
-                               cwd = "/home/picloud/DPMixtureModel/DPMM_SMC/",  \
+                               cwd = "/home/picloud/DPMixtureModel/DPMM_Variational/",  \
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
   out, err = ls_output.communicate()
