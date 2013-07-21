@@ -433,7 +433,7 @@ function run_sampler()
 		###### PARTICLE CREATION and EVOLUTION #######
 		particles[time]=Dict()
 		#println("TRUET:", true_topics[1:time])		
-		do_lookahead = (rand()>0.90)	
+		do_lookahead = (rand()>0)	
 		for N=1:NUM_PARTICLES
 
 			if _DEBUG == 1

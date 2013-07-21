@@ -12,12 +12,13 @@ number_of_clusters = int(sys.argv[1])
 if_zero_shortlearning = sys.argv[2] # Should be "yes" or "no"
 experiment_name = sys.argv[3]"""
 
-# Usage: python picloud_runner.py 50 10 30
+# Usage: python picloud_runner.py 50 1 5
 
 
 TRIALS = int(sys.argv[1])
 NUM_PARTICLES = int(sys.argv[2])
 DELTA = int(sys.argv[3])
+
 
 def run_on_instance(trial_id):
   global number_of_clusters
@@ -39,5 +40,5 @@ def run_on_instance(trial_id):
 jids = cloud.map(run_on_instance, range(TRIALS), _env=cloud_environment, _type='c2', _cores=1)
 print jids
 result = cloud.result(jids)
-pickle.dump(result, open(str(str(datetime.datetime.now())+"_TRIALS_"+str(TRIALS)+ "_PARTICLES_"+ str(NUM_PARTICLES)+ "_DELTA_" + str(DELTA) +".pkl","wb"))
+pickle.dump(result, open(str(datetime.datetime.now())+"_TRIALS_"+str(TRIALS)+ "_PARTICLES_"+ str(NUM_PARTICLES)+ "_DELTA_" + str(DELTA) +".pkl","wb"))
 print "RESULT:", result

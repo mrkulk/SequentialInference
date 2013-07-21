@@ -72,7 +72,7 @@ function plotPointsfromChain(time,)
 		ariArr = myappend(ariArr, metrics.adjusted_rand_score(inferred_clusters, true_clusters))
 	end
 	if length(ARGS) == 0
-		println("time:", time," Maximum ARI: ", max(ariArr))
+	#	println("time:", time," Maximum ARI: ", max(ariArr))
 	end
 	return max(ariArr)
 end
@@ -402,6 +402,7 @@ function path_integral(time, N)
 	z_posterior_array_probability = []
 	z_posterior_array_cid = []
 
+	#println(particles[time-1][N]["hidden_state"]["c_aggregate"])
 	for j in root_support
 		current_c_aggregate = myappend(particles[time-1][N]["hidden_state"]["c_aggregate"], j)
 		zj_probability = get_posterior_zj(j, current_c_aggregate, time)
@@ -475,13 +476,14 @@ function run_sampler()
 		end
 
 		if MAXFILTERING == 1
-			stratifiedMaxFiltering(particles[time], particles[time-1], maxfilter_probability_array, maxfilter_cid_array, NUM_PARTICLES)	
+			#@bp
+			stratifiedMaxFiltering(particles[time], deepcopy(particles[time-1]), maxfilter_probability_array, maxfilter_cid_array, NUM_PARTICLES)	
 		else
 			normalizeWeights(time)
 			resample(time)
+			recycle(time)
 		end
-
-		recycle(time)
+		
 		#println(particles)
 		if mod(time, NUM_POINTS) == 0
 			return plotPointsfromChain(time)
@@ -510,7 +512,7 @@ data = loadObservations()
 LOOKAHEAD_DELTA = 0
 
 MAXFILTERING = 0
-ari_without_maxf = run_sampler()
+ari_without_maxf = 0#run_sampler()
 MAXFILTERING = 1
 ari_with_maxf= run_sampler()
 
