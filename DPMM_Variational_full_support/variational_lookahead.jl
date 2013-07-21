@@ -315,7 +315,7 @@ function get_margin_loglikelihood(gibbs_wt, history_c_aggregate, prev_support, t
 	println("soft_lambda:", soft_lambda)
 	print(history_c_aggregate); print(c_aggregate, "\n\n")"""
 	
-	return logL
+	return logL - log(DELTA_TIME)
 end
 
 
