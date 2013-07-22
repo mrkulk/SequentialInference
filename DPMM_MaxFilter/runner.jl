@@ -61,16 +61,16 @@ function plotPointsfromChain(time,)
 	pylab.clf()
 	
 	true_clusters = data["c_aggregate"][1:time]
-	println("TRUEC:", true_clusters)
+	#println("TRUEC:", true_clusters)
 	for N=1:length(particles[time])
-		for i=1:time
+		"""for i=1:time
 			pylab.plot(data[i][1],data[i][2], "o", color=COLORS[particles[time][N]["hidden_state"]["c_aggregate"][i]])
 		end
-		pylab.savefig(string("maxfilter:",MAXFILTERING," time:", time, " PARTICLE_",N,"_",".png"))
+		pylab.savefig(string("maxfilter:",MAXFILTERING," time:", time, " PARTICLE_",N,"_",".png"))"""
 
 		inferred_clusters = particles[time][N]["hidden_state"]["c_aggregate"]
 		ariArr = myappend(ariArr, metrics.adjusted_rand_score(inferred_clusters, true_clusters))
-		println("INFER:", inferred_clusters)
+		#println("INFER:", inferred_clusters)
 	end
 	if length(ARGS) == 0
 	#	println("time:", time," Maximum ARI: ", max(ariArr))
@@ -429,6 +429,7 @@ end
 
 
 function run_sampler()
+	particles = Dict()
 	#### particle init ####
 	state=Dict()
 	state["c"] = 1
@@ -445,8 +446,8 @@ function run_sampler()
 	for time = 2:NUM_POINTS
 
 		if length(ARGS) == 0
-			println("##################")
-			println("time: ", time)
+			#println("##################")
+			#println("time: ", time)
 		end
 
 		###### PARTICLE CREATION and EVOLUTION #######
@@ -482,8 +483,11 @@ function run_sampler()
 		end
 
 		if MAXFILTERING == 1
-			stratifiedMaxFiltering(particles[time], deepcopy(particles[time-1]), maxfilter_probability_array, maxfilter_cid_array,maxfilter_particle_struct, NUM_PARTICLES)	
-			#maxFilter(particles[time], deepcopy(particles[time-1]), maxfilter_probability_array, maxfilter_cid_array, NUM_PARTICLES)
+			if EQUIVALENCE_MAXFILTERING == 1
+				stratifiedMaxFiltering(particles[time], deepcopy(particles[time-1]), maxfilter_probability_array, maxfilter_cid_array,maxfilter_particle_struct, NUM_PARTICLES)	
+			else
+				maxFilter(particles[time], deepcopy(particles[time-1]), maxfilter_probability_array, maxfilter_cid_array, maxfilter_particle_struct, NUM_PARTICLES)
+			end
 		else
 			normalizeWeights(time)
 			resample(time)
@@ -505,31 +509,41 @@ if length(ARGS) > 0
 	DELTA = int(ARGS[2])
 	INTEGRAL_PATHS = int(ARGS[3])
 	MAXFILTERING = int(ARGS[4])
+	EQUIVALENCE_MAXFILTERING = int(ARGS[5])
 else
 	NUM_PARTICLES = 10#1
 	DELTA = 0#3#10
 	INTEGRAL_PATHS = 1#2
 	MAXFILTERING = 0
+	EQUIVALENCE_MAXFILTERING = 0
 end
 
 #println(string("NUM_PARTICLES:", NUM_PARTICLES, " DELTA:", DELTA, " INTEGRAL_PATHS:", INTEGRAL_PATHS))
 
 LOOKAHEAD_DELTA = 0
 
-srand(1)
+srand(35)
 data = loadObservations()
 
+srand(9)
 MAXFILTERING = 0
 ari_without_maxf = run_sampler()
 
+srand(9)
 MAXFILTERING = 1
+EQUIVALENCE_MAXFILTERING = 0
 ari_with_maxf= run_sampler()
 
-println("MULT-RESAMPLE:", ari_without_maxf, "  MAXFILTER:", ari_with_maxf)
+srand(9)
+MAXFILTERING = 1
+EQUIVALENCE_MAXFILTERING = 1
+ari_with_eqmaxf= run_sampler()
+
+println("MULT-RESAMPLE:", ari_without_maxf, "  MAXFILTER:", ari_with_maxf, " EQMAXF:", ari_with_eqmaxf)
 #LOOKAHEAD_DELTA = DELTA
 #ari_with_lookahead = run_sampler()
 
-#print([ari_without_maxf, ari_with_maxf])
+#print([ari_without_maxf, ari_with_maxf, ari_with_eqmaxf])
 end
 
 
