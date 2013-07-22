@@ -35,7 +35,7 @@ def genericPlot(X,Y,xlab,ylab,fname):
 
 
 
-fname = '575015_TRIALS_100_PARTICLES_1_DELTA_5'
+fname = 'CHIBBS_WAS_DIVIDED_2013-07-240.933347_TRIALS_100_PARTICLES_1_DELTA_15'
 data = pickle.load(open(fname+".pkl","rb"))
 
 f = pylab.figure()

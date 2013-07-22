@@ -35,8 +35,6 @@ const ENUMERATION = 0
 #LOOKAHEAD_DELTA = 10#10
 #const INTEGRAL_PATHS = 2#2
 
-srand(1)
-
 const DIMENSIONS = 2
 NUM_POINTS = 100
 state = Dict()
@@ -61,15 +59,18 @@ end
 function plotPointsfromChain(time,)
 	ariArr = []
 	pylab.clf()
+	
+	true_clusters = data["c_aggregate"][1:time]
+	println("TRUEC:", true_clusters)
 	for N=1:length(particles[time])
-		"""for i=1:time
+		for i=1:time
 			pylab.plot(data[i][1],data[i][2], "o", color=COLORS[particles[time][N]["hidden_state"]["c_aggregate"][i]])
 		end
-		pylab.savefig(string("time:", time, " PARTICLE_",N,"_",".png"))"""
+		pylab.savefig(string("maxfilter:",MAXFILTERING," time:", time, " PARTICLE_",N,"_",".png"))
 
-		true_clusters = data["c_aggregate"][1:time]
 		inferred_clusters = particles[time][N]["hidden_state"]["c_aggregate"]
 		ariArr = myappend(ariArr, metrics.adjusted_rand_score(inferred_clusters, true_clusters))
+		println("INFER:", inferred_clusters)
 	end
 	if length(ARGS) == 0
 	#	println("time:", time," Maximum ARI: ", max(ariArr))
@@ -111,7 +112,7 @@ end
 function loadObservations()
 	data = Dict()
 	mu,std,mixture_weights = dataset2()
-	data["c_aggregate"] = zeros(NUM_POINTS)
+	data["c_aggregate"] = int(zeros(NUM_POINTS))
 
 	data["get_data_arr"] = Dict()
 	for d=1:DIMENSIONS
@@ -397,8 +398,10 @@ end
 
 function path_integral(time, N)
 	root_support = particles[time-1][N]["hidden_state"]["c_aggregate"]
-	root_support = unique(myappend(root_support, max(root_support)+1))
-	
+	if root_support[time-1] == max(root_support)
+		root_support = unique(myappend(root_support, max(root_support)+1))
+	end
+
 	z_posterior_array_probability = []
 	z_posterior_array_cid = []
 
@@ -451,6 +454,8 @@ function run_sampler()
 		COUNTER = 1
 		maxfilter_probability_array = []
 		maxfilter_cid_array = []
+		maxfilter_particle_struct=[]
+
 		for N=1:NUM_PARTICLES
 
 			if _DEBUG == 1
@@ -465,6 +470,7 @@ function run_sampler()
 				for ii=1:length(z_posterior_array_probability)
 					maxfilter_probability_array = myappend(maxfilter_probability_array, z_posterior_array_probability[ii])
 					maxfilter_cid_array = myappend(maxfilter_cid_array, z_posterior_array_cid[ii])
+					maxfilter_particle_struct = myappend(maxfilter_particle_struct, N)
 				end
 			else			
 				particles[time][N]["weight"], sampled_cid = path_integral(time,N)
@@ -476,14 +482,14 @@ function run_sampler()
 		end
 
 		if MAXFILTERING == 1
-			#@bp
-			stratifiedMaxFiltering(particles[time], deepcopy(particles[time-1]), maxfilter_probability_array, maxfilter_cid_array, NUM_PARTICLES)	
+			stratifiedMaxFiltering(particles[time], deepcopy(particles[time-1]), maxfilter_probability_array, maxfilter_cid_array,maxfilter_particle_struct, NUM_PARTICLES)	
+			#maxFilter(particles[time], deepcopy(particles[time-1]), maxfilter_probability_array, maxfilter_cid_array, NUM_PARTICLES)
 		else
 			normalizeWeights(time)
 			resample(time)
 			recycle(time)
 		end
-		
+
 		#println(particles)
 		if mod(time, NUM_POINTS) == 0
 			return plotPointsfromChain(time)
@@ -508,11 +514,14 @@ end
 
 #println(string("NUM_PARTICLES:", NUM_PARTICLES, " DELTA:", DELTA, " INTEGRAL_PATHS:", INTEGRAL_PATHS))
 
-data = loadObservations()
 LOOKAHEAD_DELTA = 0
 
+srand(1)
+data = loadObservations()
+
 MAXFILTERING = 0
-ari_without_maxf = 0#run_sampler()
+ari_without_maxf = run_sampler()
+
 MAXFILTERING = 1
 ari_with_maxf= run_sampler()
 
