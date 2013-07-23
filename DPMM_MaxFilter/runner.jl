@@ -506,44 +506,48 @@ end
 #################### MAIN RUNNER ####################
 if length(ARGS) > 0
 	NUM_PARTICLES = int(ARGS[1])
-	DELTA = int(ARGS[2])
-	INTEGRAL_PATHS = int(ARGS[3])
-	MAXFILTERING = int(ARGS[4])
-	EQUIVALENCE_MAXFILTERING = int(ARGS[5])
+	SEED = int(ARGS[2])
+	REPETITIONS = int(ARGS[3])
+
+	DELTA = 0#int(ARGS[2])
+	INTEGRAL_PATHS = 0#int(ARGS[3])
 else
 	NUM_PARTICLES = 10#1
 	DELTA = 0#3#10
 	INTEGRAL_PATHS = 1#2
-	MAXFILTERING = 0
-	EQUIVALENCE_MAXFILTERING = 0
+	SEED = 150 #5600
+	REPETITIONS = 2
 end
 
 #println(string("NUM_PARTICLES:", NUM_PARTICLES, " DELTA:", DELTA, " INTEGRAL_PATHS:", INTEGRAL_PATHS))
 
 LOOKAHEAD_DELTA = 0
 
-srand(35)
+srand(SEED)
 data = loadObservations()
 
-srand(9)
-MAXFILTERING = 0
-ari_without_maxf = run_sampler()
 
-srand(9)
 MAXFILTERING = 1
 EQUIVALENCE_MAXFILTERING = 0
 ari_with_maxf= run_sampler()
 
-srand(9)
-MAXFILTERING = 1
-EQUIVALENCE_MAXFILTERING = 1
-ari_with_eqmaxf= run_sampler()
+ari_without_maxf = 0
+ari_with_eqmaxf = 0
 
-println("MULT-RESAMPLE:", ari_without_maxf, "  MAXFILTER:", ari_with_maxf, " EQMAXF:", ari_with_eqmaxf)
-#LOOKAHEAD_DELTA = DELTA
-#ari_with_lookahead = run_sampler()
+for i=1:REPETITIONS
+	MAXFILTERING = 0
+	EQUIVALENCE_MAXFILTERING = 0
+	ari_without_maxf += run_sampler()
 
-#print([ari_without_maxf, ari_with_maxf, ari_with_eqmaxf])
+	MAXFILTERING = 1
+	EQUIVALENCE_MAXFILTERING = 1
+	ari_with_eqmaxf += run_sampler()
+
+	#println("MULT-RESAMPLE:", ari_without_maxf, "  MAXFILTER:", ari_with_maxf, " EQMAXF:", ari_with_eqmaxf)
+end
+
+ari_without_maxf /= REPETITIONS; ari_with_eqmaxf /= REPETITIONS
+print([ari_without_maxf, ari_with_maxf, ari_with_eqmaxf])
 end
 
 

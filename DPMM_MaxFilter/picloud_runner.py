@@ -11,13 +11,12 @@ number_of_clusters = int(sys.argv[1])
 if_zero_shortlearning = sys.argv[2] # Should be "yes" or "no"
 experiment_name = sys.argv[3]"""
 
-# Usage: python picloud_runner.py 100 50 10 2
+# Usage: python picloud_runner.py 200 10 20
 
 
 TRIALS = int(sys.argv[1])
 NUM_PARTICLES = int(sys.argv[2])
-DELTA = int(sys.argv[3])
-INTEGRAL_PATHS = int(sys.argv[4])
+REPETITIONS = int(sys.argv[3])
 
 
 def run_on_instance(trial_id):
@@ -28,8 +27,8 @@ def run_on_instance(trial_id):
   import os
   os.environ['DISPLAY'] = ":1"
   print "Starting"
-  ls_output = subprocess.Popen(["/home/picloud/julia/julia", "runner.jl", str(NUM_PARTICLES), str(DELTA), str(INTEGRAL_PATHS)], \
-                               cwd = "/home/picloud/DPMixtureModel/DPMM_SMC/",  \
+  ls_output = subprocess.Popen(["/home/picloud/julia/julia", "runner.jl", str(NUM_PARTICLES), str(trial_id), str(REPETITIONS)], \
+                               cwd = "/home/picloud/DPMixtureModel/DPMM_MaxFilter/",  \
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
   out, err = ls_output.communicate()
@@ -40,5 +39,5 @@ def run_on_instance(trial_id):
 jids = cloud.map(run_on_instance, range(TRIALS), _env=cloud_environment, _type='c2', _cores=1)
 print jids
 result = cloud.result(jids)
-pickle.dump(result, open("result_"+str(NUM_PARTICLES)+"particles_"+str(DELTA)+"delta_"+str(INTEGRAL_PATHS)+"path.pkl","wb"))
+pickle.dump(result, open("result_"+str(NUM_PARTICLES)+"particles_"+str(REPETITIONS)+"path.pkl","wb"))
 print "RESULT:", result

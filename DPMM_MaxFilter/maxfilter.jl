@@ -49,10 +49,13 @@ function stratifiedMaxFiltering(particles_t, particles_t_minus_1, maxfilter_prob
 		#print("(",maxfilter_particle_struct[i], ") ")
 	end
 
+	IND_CNT = 1
 	if NUM_PARTICLES > unique_total_cids
 		for i=END+1:NUM_PARTICLES
 			state=Dict()
-			state["c"] = maxfilter_cid_array[randi(unique_total_cids)]
+			#state["c"] = maxfilter_cid_array[(IND_CNT%unique_total_cids)+1]#[randi(unique_total_cids)] ##random vs deterministic stratified
+			state["c"] = maxfilter_cid_array[randi(unique_total_cids)] ##random vs deterministic stratified
+			IND_CNT +=1
 			state["c_aggregate"] = myappend(particles_t_minus_1[maxfilter_particle_struct[i]]["hidden_state"]["c_aggregate"], state["c"])
 			particles_t[i]["hidden_state"]=state
 			#println(state["c_aggregate"])

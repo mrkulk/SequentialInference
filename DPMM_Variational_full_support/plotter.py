@@ -46,7 +46,7 @@ CNT=0
 nolookArr =[]
 lookArr = []
 for i in range(len(data)):
-    if len(data[i]) > 0 and i != 47:
+    if len(data[i]) > 0:
         nolook = float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[0])
         look = float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[1])
         nolookArr.append(nolook)
