@@ -33,16 +33,53 @@ function stratifiedMaxFiltering(time, particles_t, particles_t_minus_1, maxfilte
 	#	@bp
 	#end
 
+
 	maxfilter_cid_array = maxfilter_cid_array[perm]
 	maxfilter_particle_struct = maxfilter_particle_struct[perm]
 
+	state=Dict()
+	state["c"] = maxfilter_cid_array[1]
+	state["c_aggregate"] = myappend(particles_t_minus_1[maxfilter_particle_struct[1]]["hidden_state"]["c_aggregate"], state["c"])
+	particles_t[1]["hidden_state"]=state	
 
-	#println(maxfilter_cid_array)
-	i=1
+	particle_cnt = 2
+	unique_indices = []
 	
-	maxfilter_cid_array = unique(maxfilter_cid_array)
-	unique_total_cids = length(maxfilter_cid_array)
-	cnt=1
+	for i=2:length(maxfilter_cid_array)
+		last = maxfilter_cid_array[i-1]
+		cur =  maxfilter_cid_array[i]
+		if cur != last
+			if particle_cnt > NUM_PARTICLES
+				break
+			else
+				unique_indices = myappend(unique_indices, i)
+				state=Dict()
+				state["c"] = maxfilter_cid_array[i]
+				state["c_aggregate"] = myappend(particles_t_minus_1[maxfilter_particle_struct[i]]["hidden_state"]["c_aggregate"], state["c"])
+				particles_t[particle_cnt]["hidden_state"]=state
+				particle_cnt+=1
+			end
+		end
+		i+=1
+	end
+
+	if NUM_PARTICLES >= particle_cnt
+		len_unique_indices = length(unique_indices)
+		for p=particle_cnt:NUM_PARTICLES
+			state=Dict()
+			#indx = unique_indices[p%len_unique_indices + 1]
+			#indx = unique_indices[randi(len_unique_indices)]
+			indx = unique_indices[1]
+			state["c"] = maxfilter_cid_array[indx]
+			state["c_aggregate"] = myappend(particles_t_minus_1[maxfilter_particle_struct[indx]]["hidden_state"]["c_aggregate"], state["c"])
+			particles_t[p]["hidden_state"]=state
+		end
+	end
+
+	#println(length(particles_t))
+	"""	
+	unique_maxfilter_cid_array = unique(maxfilter_cid_array)
+	unique_total_cids = length(unique_maxfilter_cid_array)
 	unique_total_cids = min(unique_total_cids, NUM_PARTICLES)
 
 	END = NaN
@@ -75,7 +112,9 @@ function stratifiedMaxFiltering(time, particles_t, particles_t_minus_1, maxfilte
 			#println(state["c_aggregate"])
 			#print("(",maxfilter_particle_struct[i], ") ")
 		end
-	end
+	end"""
+
+
 end 
 
 

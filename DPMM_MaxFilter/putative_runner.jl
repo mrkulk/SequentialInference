@@ -437,8 +437,8 @@ function run_sampler()
 		particles[time][i] = Dict() #partile_id = 0
 		particles[time][i] = {"weight" => 1, "hidden_state" => state}
 	end
-	normalizeWeights(time)
-	resample(time)
+	#normalizeWeights(time)
+	#resample(time)
 
 	for time = 2:NUM_POINTS
 
@@ -449,7 +449,6 @@ function run_sampler()
 
 		###### PARTICLE CREATION and EVOLUTION #######
 		particles[time]=Dict()
-		COUNTER = 1
 		maxfilter_probability_array = []
 		maxfilter_cid_array = []
 		maxfilter_particle_struct=[]
@@ -470,8 +469,6 @@ function run_sampler()
 				log_maxfilter_probability_array = myappend(log_maxfilter_probability_array, z_posterior_array_probability[ii])
 				maxfilter_cid_array = myappend(maxfilter_cid_array, z_posterior_array_cid[ii])
 				maxfilter_particle_struct = myappend(maxfilter_particle_struct, N)
-				#if 
-				#is_new_cid_array = myappend(is_new_cid_array, )
 			end
 		end
 
@@ -511,8 +508,8 @@ else
 	NUM_PARTICLES = 10#1
 	DELTA = 0#3#10
 	INTEGRAL_PATHS = 1#2
-	SEED = 150#150 #5600
-	REPETITIONS = 3
+	SEED = 5600#150 #5600
+	REPETITIONS = 1
 end
 
 #println(string("NUM_PARTICLES:", NUM_PARTICLES, " DELTA:", DELTA, " INTEGRAL_PATHS:", INTEGRAL_PATHS))
