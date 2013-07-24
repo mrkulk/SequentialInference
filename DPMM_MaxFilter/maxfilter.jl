@@ -56,6 +56,7 @@ function stratifiedMaxFiltering(time, particles_t, particles_t_minus_1, maxfilte
 	for i=1:END
 		state=Dict()
 		state["c"] = maxfilter_cid_array[i]
+
 		state["c_aggregate"] = myappend(particles_t_minus_1[maxfilter_particle_struct[i]]["hidden_state"]["c_aggregate"], state["c"])
 		particles_t[i]["hidden_state"]=state	
 		#println(state["c_aggregate"])	
