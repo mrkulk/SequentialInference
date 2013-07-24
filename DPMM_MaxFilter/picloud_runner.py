@@ -27,7 +27,7 @@ def run_on_instance(trial_id):
   import os
   os.environ['DISPLAY'] = ":1"
   print "Starting"
-  ls_output = subprocess.Popen(["/home/picloud/julia/julia", "runner.jl", str(NUM_PARTICLES), str(trial_id), str(REPETITIONS)], \
+  ls_output = subprocess.Popen(["/home/picloud/julia/julia", "putative_runner.jl", str(NUM_PARTICLES), str(trial_id), str(REPETITIONS)], \
                                cwd = "/home/picloud/DPMixtureModel/DPMM_MaxFilter/",  \
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 

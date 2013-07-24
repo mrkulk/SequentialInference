@@ -35,7 +35,7 @@ def genericPlot(X,Y,xlab,ylab,fname):
 
 
 
-fname = 'result_1particles_5delta_2path'
+fname = 'result_10particles_30path'
 data = pickle.load(open(fname+".pkl","rb"))
 
 f = pylab.figure()
@@ -43,29 +43,33 @@ ax=f.add_subplot(111,title='')
 X=[]
 Y=[]
 CNT=0
-nolookArr =[]
-lookArr = []
+
+with_maxf=[]
+without_maxf = []
+with_eqmaxf = []
+
 for i in range(len(data)):
     if len(data[i]) > 0:
-        nolook = float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[0])
-        look = float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[1])
-        nolookArr.append(nolook)
-        lookArr.append(look)
+        without_maxf.append(float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[0]))
+        with_maxf.append(float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[1]))
+        with_eqmaxf.append(float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[2]))
         X.append(i)
-        Y.append(look-nolook)
-        if look > nolook:
-            CNT+=1
 
-print len(data), CNT
-print 'Average (Look):', sum(lookArr)/len(data)
-print 'Average (Nolook):', sum(nolookArr)/len(data)
+print 'Average (without_maxf):', sum(without_maxf)/len(data)
+print 'Average (with_maxf):', sum(with_maxf)/len(data)
+print 'Average (with_eqmaxf):', sum(with_eqmaxf)/len(data)
 
-ax.bar(X,Y,0.4,color='black')
+
+#ax.bar(X,Y,0.4,color='black')
+ax.plot(X,without_maxf, color="grey")
+ax.plot(X,with_maxf, color="black")
+ax.plot(X,with_eqmaxf, color="blue")
+
 
 pylab.xlabel('Run Number',fontsize=30)
 pylab.ylabel('ARI Difference',fontsize=30)
 pylab.savefig(fname+'.png')
-pylab.ylim([-0.35, 0.35])
+#pylab.ylim([-0.35, 0.35])
 #ax.grid(True)
 saveAsPDF(fname+'.pdf',f)
 

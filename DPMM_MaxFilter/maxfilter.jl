@@ -20,10 +20,23 @@ function maxFilter(particles_t, particles_t_minus_1, maxfilter_probability_array
 end 
 
 
-function stratifiedMaxFiltering(particles_t, particles_t_minus_1, maxfilter_probability_array, maxfilter_cid_array, maxfilter_particle_struct, NUM_PARTICLES)
+function stratifiedMaxFiltering(time, particles_t, particles_t_minus_1, maxfilter_probability_array, maxfilter_cid_array, maxfilter_particle_struct, NUM_PARTICLES)
+
+	## BAD [buy why?]logperm = sortperm(log_maxfilter_probability_array, Sort.Reverse)
+	#_maxfilter_cid_array = maxfilter_cid_array[logperm]
+	#_maxfilter_particle_struct = maxfilter_particle_struct[logperm]
 	perm = sortperm(maxfilter_probability_array, Sort.Reverse)
+
+	#println( sum([i<0 for i in log_maxfilter_probability_array]) - length(log_maxfilter_probability_array))
+	#println(log_maxfilter_probability_array)
+	#if perm != logperm
+	#	@bp
+	#end
+
 	maxfilter_cid_array = maxfilter_cid_array[perm]
 	maxfilter_particle_struct = maxfilter_particle_struct[perm]
+
+
 	#println(maxfilter_cid_array)
 	i=1
 	

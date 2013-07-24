@@ -10,6 +10,7 @@ using PyCall
 using Base.Collections
 require("dataset.jl")
 require("maxfilter.jl")
+using NumericExtensions
 
 @pyimport pylab
 @pyimport sklearn.metrics as metrics
@@ -73,7 +74,7 @@ function plotPointsfromChain(time,)
 		#println("INFER:", inferred_clusters)
 	end
 	if length(ARGS) == 0
-	#	println("time:", time," Maximum ARI: ", max(ariArr))
+		#println("time:", time," Maximum ARI: ", max(ariArr))
 	end
 	return max(ariArr)
 end
@@ -138,34 +139,17 @@ end
 
 #################### MAIN FUNCTION DEFINITIONS ####################
 function normalizeWeights(time)
-	normalizing_constant = sum([s["weight"] for s in values(particles[time])])
+	norm_arr = zeros(length(particles[time]))
 	for i = 1:length(particles[time])
-		particles[time][i]["weight"]/=normalizing_constant
-		#particles[time][i]["weight"] = exp(particles[time][i]["weight"]) #exponentiating to get probability values
+		norm_arr[i] = particles[time][i]["weight"]
+	end
+	normalizing_constant = logsumexp(norm_arr)
+
+	for i = 1:length(particles[time])
+		particles[time][i]["weight"]-=normalizing_constant
+		particles[time][i]["weight"] = exp(particles[time][i]["weight"])
 	end
 end
-
-
-## devised by Fearnhead and Clifford (2003)
-function FC_resample(time)
-	weight_vector = [s["weight"] for s in values(particles[time])]
-	weight_vector = float64(weight_vector)
-	particles_new_indx = int(zeros(length(particles[time])))
-	particles_temporary = copy(particles[time])
-
-	particles[time] = Dict() ##?? 
-
-	for i = 1:NUM_PARTICLES
-		if particles_temporary[i]["weight"] < 1/50
-			sample_arr = rand(Multinomial(1,weight_vector))
-			particles_new_indx[i] = findin(sample_arr, 1)[1]
-			particles[time][i] = particles_temporary[particles_new_indx[i]]
-			particles[time][i]["weight"] = 1/50
-		else
-			particles[time][i] = particles_temporary[i]
-		end
-	end
-end	
 
 
 
@@ -174,6 +158,7 @@ function resample(time)
 	for i=1:NUM_PARTICLES
 		weight_vector[i] = particles[time][i]["weight"]
 	end
+
 	particles_new_indx = int(zeros(length(particles[time])))
 	particles_temporary = deepcopy(particles[time])
 	
@@ -218,23 +203,6 @@ function posterior_z_helper(nj, total_pts, a, b, tao, alpha ,eta, obs_mean, obs_
 end
 
 
-function get_joint_crp_probability(cid, cid_cardinality, indices, alpha)
-	numerator = 0
-	denominator = 0
-	for i=1:cid_cardinality-1
-		numerator += log(i)
-		denominator += log(alpha + i - 1)
-	end
-	denominator += log(alpha + cid_cardinality - 1)
-
-	ret = log(alpha)+numerator-denominator
-
-	return ret
-end
-
-
-
-
 function get_posterior_zj(cid, c_aggregate,time)
 	a = hyperparameters["a"]; b=hyperparameters["b"]; alpha = hyperparameters["alpha"]; tao = hyperparameters["tao"]; eta = hyperparameters["eta"];total_pts = time
 	posterior = 0
@@ -269,7 +237,7 @@ function get_posterior_zj(cid, c_aggregate,time)
 	#end
 	#println("[POSTERIOR] ", " v:", exp(posterior), " cid:", cid)
 	#println("\n")
-	return exp(posterior)
+	return posterior
 
 end
 
@@ -285,15 +253,21 @@ end
 
 
 function sample_from_crp(z_posterior_array_probability, z_posterior_array_cid)
-	normalizing_constant = sum(z_posterior_array_probability)
-	z_posterior_array_probability /= normalizing_constant
-	sample_arr = rand(Multinomial(1,z_posterior_array_probability))
+	normalizing_constant = logsumexp(z_posterior_array_probability)
+
+	EXP_z_posterior_array_probability = deepcopy(z_posterior_array_probability)
+	EXP_z_posterior_array_probability -= normalizing_constant
+	EXP_z_posterior_array_probability = exp(EXP_z_posterior_array_probability)
+
+	sample_arr = rand(Multinomial(1,EXP_z_posterior_array_probability))
 	indx = findin(sample_arr, 1)[1]
 	cid = z_posterior_array_cid[indx]
 	weight = z_posterior_array_probability[indx]
 
 	return weight, cid
 end
+
+
 
 
 
@@ -411,9 +385,9 @@ function path_integral(time, N)
 		zj_probability = get_posterior_zj(j, current_c_aggregate, time)
 
 		##### lookahead. this will be support it explores further
-		if time + LOOKAHEAD_DELTA <= NUM_POINTS
-			zj_probability *= get_weight_lookahead(unique(current_c_aggregate),current_c_aggregate, time+1, j)
-		end
+		#if time + LOOKAHEAD_DELTA <= NUM_POINTS
+		#[[FIXME signs]]	zj_probability += get_weight_lookahead(unique(current_c_aggregate),current_c_aggregate, time+1, j)
+		#end
 
 		z_posterior_array_probability = myappend(z_posterior_array_probability, zj_probability)
 		z_posterior_array_cid = myappend(z_posterior_array_cid, j)
@@ -456,6 +430,8 @@ function run_sampler()
 		maxfilter_probability_array = []
 		maxfilter_cid_array = []
 		maxfilter_particle_struct=[]
+		
+		log_maxfilter_probability_array = []
 
 		for N=1:NUM_PARTICLES
 
@@ -469,7 +445,8 @@ function run_sampler()
 			if MAXFILTERING == 1
 				z_posterior_array_probability, z_posterior_array_cid = path_integral(time,N)
 				for ii=1:length(z_posterior_array_probability)
-					maxfilter_probability_array = myappend(maxfilter_probability_array, z_posterior_array_probability[ii])
+					maxfilter_probability_array = myappend(maxfilter_probability_array, exp(z_posterior_array_probability[ii]))
+					#log_maxfilter_probability_array = myappend(log_maxfilter_probability_array, z_posterior_array_probability[ii])
 					maxfilter_cid_array = myappend(maxfilter_cid_array, z_posterior_array_cid[ii])
 					maxfilter_particle_struct = myappend(maxfilter_particle_struct, N)
 				end
@@ -484,7 +461,7 @@ function run_sampler()
 
 		if MAXFILTERING == 1
 			if EQUIVALENCE_MAXFILTERING == 1
-				stratifiedMaxFiltering(particles[time], deepcopy(particles[time-1]), maxfilter_probability_array, maxfilter_cid_array,maxfilter_particle_struct, NUM_PARTICLES)	
+				stratifiedMaxFiltering(time, particles[time], deepcopy(particles[time-1]), maxfilter_probability_array, maxfilter_cid_array,maxfilter_particle_struct, NUM_PARTICLES)	
 			else
 				maxFilter(particles[time], deepcopy(particles[time-1]), maxfilter_probability_array, maxfilter_cid_array, maxfilter_particle_struct, NUM_PARTICLES)
 			end
@@ -515,7 +492,7 @@ else
 	NUM_PARTICLES = 10#1
 	DELTA = 0#3#10
 	INTEGRAL_PATHS = 1#2
-	SEED = 150 #5600
+	SEED = 5600#150 #5600
 	REPETITIONS = 2
 end
 
@@ -529,7 +506,7 @@ data = loadObservations()
 
 MAXFILTERING = 1
 EQUIVALENCE_MAXFILTERING = 0
-ari_with_maxf= run_sampler()
+ari_with_maxf= 0#run_sampler()
 
 ari_without_maxf = 0
 ari_with_eqmaxf = 0
@@ -537,17 +514,20 @@ ari_with_eqmaxf = 0
 for i=1:REPETITIONS
 	MAXFILTERING = 0
 	EQUIVALENCE_MAXFILTERING = 0
-	ari_without_maxf += run_sampler()
+	_ari_without_maxf = run_sampler()
+	ari_without_maxf += _ari_without_maxf
 
 	MAXFILTERING = 1
 	EQUIVALENCE_MAXFILTERING = 1
-	ari_with_eqmaxf += run_sampler()
+	_ari_with_eqmaxf = run_sampler()
+	ari_with_eqmaxf += _ari_with_eqmaxf
 
-	#println("MULT-RESAMPLE:", ari_without_maxf, "  MAXFILTER:", ari_with_maxf, " EQMAXF:", ari_with_eqmaxf)
+	println("MULT-RESAMPLE:", _ari_without_maxf, "  MAXFILTER:", ari_with_maxf, " EQMAXF:", _ari_with_eqmaxf)
 end
 
 ari_without_maxf /= REPETITIONS; ari_with_eqmaxf /= REPETITIONS
 print([ari_without_maxf, ari_with_maxf, ari_with_eqmaxf])
+
 end
 
 
