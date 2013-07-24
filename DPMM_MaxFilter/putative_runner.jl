@@ -527,17 +527,16 @@ ari_with_maxf = run_sampler()
 ari_without_maxf = 0
 ari_with_eqmaxf = 0
 
+MAXFILTERING = 1
+EQUIVALENCE_MAXFILTERING = 1
+_ari_with_eqmaxf = run_sampler()
+ari_with_eqmaxf += _ari_with_eqmaxf
+
 for i=1:REPETITIONS
 	MAXFILTERING = 0
 	EQUIVALENCE_MAXFILTERING = 0
 	_ari_without_maxf = run_sampler()
 	ari_without_maxf += _ari_without_maxf
-
-	MAXFILTERING = 1
-	EQUIVALENCE_MAXFILTERING = 1
-	_ari_with_eqmaxf = run_sampler()
-	ari_with_eqmaxf += _ari_with_eqmaxf
-
 	#println("MULT-RESAMPLE:", _ari_without_maxf, "  MAXFILTER:", ari_with_maxf, " EQMAXF:", _ari_with_eqmaxf)
 end
 
