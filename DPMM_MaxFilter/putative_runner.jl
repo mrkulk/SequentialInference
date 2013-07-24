@@ -37,7 +37,7 @@ const ENUMERATION = 0
 #const INTEGRAL_PATHS = 2#2
 
 const DIMENSIONS = 2
-NUM_POINTS = 200
+NUM_POINTS = 100
 state = Dict()
 particles = Dict()
 hyperparameters = Dict()
