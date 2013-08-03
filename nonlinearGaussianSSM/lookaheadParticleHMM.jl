@@ -4,7 +4,7 @@
 using Distributions
 using Debug
 using PyCall
-require("pmapLoading.jl")
+#require("pmapLoading.jl")
 # @pyimport numpy.random as nr
 # println(nr.rand(3,4))
 # @pyimport scipy.optimize as so
