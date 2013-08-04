@@ -46,7 +46,9 @@ function buildProfitMatrix(seq_true, seq_inferred)
 end
 
 
-function computeError(indices, seq_inferred, seq_true)
+function computeError(seq_inferred, seq_true)
+	matrix = buildProfitMatrix(seq_true, seq_inferred)
+	indices = hm.teest(matrix)
 	tru_dict = encodeAlphabet(seq_true)["index_to_alphabet_dict"]
 	inf_dict = encodeAlphabet(seq_inferred)["index_to_alphabet_dict"]
 	modified_indices = []
@@ -64,7 +66,7 @@ function computeError(indices, seq_inferred, seq_true)
 		end
 	end
 
-	println(seq_inferred)
+	#println(seq_inferred)
 	count_error = 0
 	for t = 1:length(seq_true)
 		if seq_true[t] != seq_inferred[t]
@@ -76,16 +78,16 @@ end
 
 
 
-seq_inferred = [1,1,1,3,3,3]
-seq_true = [1,1,3,3,4,4]
+# seq_inferred = [1,1,1,3,3,3]
+# seq_true = [1,1,3,3,4,4]
 
-matrix = buildProfitMatrix(seq_true, seq_inferred)
+# matrix = buildProfitMatrix(seq_true, seq_inferred)
 
 
-indices = hm.teest(matrix)
-println(indices)
-inferred = computeError(indices, seq_inferred, seq_true)
-println(inferred)
+# indices = hm.teest(matrix)
+# println(indices)
+# inferred = computeError(indices, seq_inferred, seq_true)
+# println(inferred)
 
 
 end
