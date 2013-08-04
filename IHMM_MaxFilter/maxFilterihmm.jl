@@ -19,30 +19,56 @@ srand(1)
 TOP_ALPHA = 1
 LOW_ALPHA = 1
 OBS_ALPHA = 1
-NUM_OBS = 4
-SEQUENCE_LENGTH = 3
-NUM_PARTICLES = 5
-
+NUM_PARTICLES = 10
+NUM_SAMPLES = 100
 
 obs_sequence = Dict()
-obs_sequence[1] = 1
-obs_sequence[2] = 1
-obs_sequence[3] = 2
+# obs_sequence[1] = 1
+# obs_sequence[2] = 1
+# obs_sequence[3] = 2
 
-seq_true = []
-for i = 1:length(keys(obs_sequence))
-	seq_true = vcat(seq_true, obs_sequence[i])
+# seq_true = []
+# for i = 1:length(keys(obs_sequence))
+# 	seq_true = vcat(seq_true, obs_sequence[i])
+# end
+
+seq_true = [1.0,1.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,2.0,2.0,1.0,4.0,2.0,2.0,3.0,2.0,2.0,1.0,2.0,2.0,2.0,3.0,3.0,3.0,4.0,2.0,2.0,2.0]
+obs = [1.0,1.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,2.0,2.0,1.0,4.0,2.0,2.0,3.0,2.0,2.0,1.0,2.0,2.0,2.0,3.0,3.0,3.0,4.0,2.0,2.0,2.0]
+
+seq_true = [2.0,2.0,2.0,2.0,2.0,2.0,2.0,3.0,3.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,2.0,2.0,2.0,2.0,2.0,1.0,1.0,2.0,1.0,1.0]
+obs = [2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,3.0,1.0,1.0,2.0,3.0,1.0,1.0,2.0,1.0,1.0,1.0,1.0,2.0,4.0,1.0,2.0,2.0,1.0,1.0,2.0,1.0,1.0]
+
+seq_true = [2.0,2.0,2.0,3.0,3.0,3.0,3.0,3.0,4.0,1.0,1.0,1.0,1.0,1.0,2.0,1.0,1.0,1.0,1.0,1.0,1.0,4.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0]
+obs = [2.0,2.0,2.0,3.0,3.0,3.0,3.0,3.0,4.0,4.0,1.0,1.0,1.0,1.0,3.0,1.0,1.0,3.0,1.0,2.0,1.0,4.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0]
+
+# seq_true = [1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,2.0,3.0,3.0,3.0,3.0,3.0,3.0,3.0,3.0,3.0,3.0,3.0,2.0,2.0,2.0,2.0,1.0,1.0,2.0,2.0,1.0]
+# obs = [3.0,1.0,1.0,1.0,3.0,1.0,2.0,1.0,2.0,2.0,3.0,3.0,2.0,3.0,3.0,3.0,3.0,1.0,3.0,3.0,4.0,3.0,2.0,2.0,2.0,1.0,1.0,2.0,2.0,1.0]
+
+SEQUENCE_LENGTH = length(seq_true)
+for j = 1:SEQUENCE_LENGTH
+	obs_sequence[j] = obs[j]
 end
-
-
+NUM_OBS = 4
 
 
 
 
 ###################HELPER FUNCTIONS###############
 
-
-
+#this is used to distinguish between a sample from the top level and the same state sample from the bottom level
+function changeProbIndexes(prob_vect)
+	encoded_states = []
+	len = length(prob_vect)
+	low_num_states = (len - 1) / 2
+	for i = 1:low_num_states
+		encoded_states = vcat(encoded_states, string(i))
+	end
+	for j = low_num_states + 1:len - 1
+		encoded_states = vcat(encoded_states, string("t",j - low_num_states))
+	end
+	encoded_states = vcat(encoded_states, string("n",(low_num_states + 1)))
+	return encoded_states
+end
 
 
 
@@ -171,17 +197,21 @@ for p = 1:NUM_PARTICLES
 end
 
 
-
+weight_vect = zeros(NUM_PARTICLES)
 for t = 1:SEQUENCE_LENGTH
-	
+	weight_vect = zeros(NUM_PARTICLES)
+	# if t == 3
+	# 	@bp
+	# end
 	prob_vect_concated = []
 	state_particle_pair_list = []
 	#creating the prob vectors for time t and sorting the probs
 	for p_num = 1:NUM_PARTICLES
 		prob_vect = createCRFProbVect(particle_dict[p_num], obs_sequence[t])
 		prob_vect_concated = vcat(prob_vect_concated, prob_vect)
+		prob_vect_encoded = changeProbIndexes(prob_vect)
 		for ll = 1:length(prob_vect)
-			state_particle_pair_list = vcat(state_particle_pair_list, (ll, p_num) )
+			state_particle_pair_list = vcat(state_particle_pair_list, (prob_vect_encoded[ll], p_num, ll) )
 		end
 	end
 	perm = sortperm(prob_vect_concated, Sort.Reverse)
@@ -189,6 +219,7 @@ for t = 1:SEQUENCE_LENGTH
 	state_particle_pair_list = state_particle_pair_list[perm]
 	list_of_states = [pair[1] for pair in state_particle_pair_list]
 	list_of_particles = [pair[2] for pair in state_particle_pair_list]
+	list_of_indices = [pair[3] for pair in state_particle_pair_list]
 	unique_state_list = unique(list_of_states)
 
 	
@@ -196,18 +227,17 @@ for t = 1:SEQUENCE_LENGTH
 
 	#now extending the particles for time t by selecting from the particles (note that we are still at time t)
 	particle_dict_temp = Dict()
-	# if t == 2
-	# 	@bp
-	# end
+
 	num_of_uniques_added = 0 
 	for lll = 1:min(length(unique_state_list), NUM_PARTICLES)
-		first_index = findin(list_of_states, unique_state_list[lll])[1]
+		first_index = find(list_of_states .== unique_state_list[lll])[1]
 		max_particle = state_particle_pair_list[first_index][2] #finding the cluster with max prob
 		prob_of_index = prob_vect_concated[first_index]#check if it's not zero
 		if prob_of_index != 0
 			particle_dict_temp[lll] = deepcopy(particle_dict[max_particle])
-			updateIHMMSuffStat(particle_dict_temp[lll], list_of_states[first_index], t, obs_sequence[t])
+			updateIHMMSuffStat(particle_dict_temp[lll], list_of_indices[first_index], t, obs_sequence[t])
 			num_of_uniques_added += 1
+			weight_vect[lll] = prob_of_index
 		end
 
 	end
@@ -222,7 +252,7 @@ for t = 1:SEQUENCE_LENGTH
 		
 		for s in nonunique_particles
 			particle_dict_temp[s] = deepcopy(particle_dict_temp[1])
-			
+			weight_vect[s] = weight_vect[1]
 		end
 	end
 	particle_dict = deepcopy(particle_dict_temp)
@@ -230,9 +260,20 @@ for t = 1:SEQUENCE_LENGTH
 	# println()
 end
 
-seq_inferred = particle_dict[1].seq_history
-error = computeError(seq_inferred, seq_true)
+
+normalized_weight_vect = weight_vect / sum(weight_vect)
+
+total_error = 0
+for h = 1:NUM_SAMPLES
+	sample_arr = rand(Multinomial(1, normalized_weight_vect))
+	idx = findin(sample_arr, 1)[1]
+	seq_inferred = particle_dict[1].seq_history
+	total_error += computeError(seq_inferred, seq_true)
+end
+error = total_error / NUM_SAMPLES
 println(error)
+
+
 
 # println((createCRFProbVect(current_sequence, 1)))
 
