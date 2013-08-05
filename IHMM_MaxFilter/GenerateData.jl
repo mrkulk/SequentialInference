@@ -17,14 +17,9 @@ using PyCall
 @debug begin
 
 ##################PARAMETERS###################
-myappend{T}(v::Vector{T}, x::T) = [v..., x]
 
 
-LENGTH_SEQ = 30
-NUM_SEQ = 1
-
-
-
+LENGTH_SEQ = 50
 
 transition_matrix = [[0.8, 0.1, 0.05, 0.05] [0.05, 0.8, 0.1, 0.05] [0.05, 0.05, 0.8, 0.1] [0.1, 0.05, 0.05, 0.8]]
 emission_matrix = [[0.8, 0.1, 0.05, 0.05] [0.05, 0.8, 0.1, 0.05] [0.05, 0.05, 0.8, 0.1] [0.1, 0.05, 0.05, 0.8]]
@@ -55,7 +50,9 @@ function initialize()
 end
 #############GENERATE DATA#########################
 
+function main_generate(seed)
 
+srand(seed)
 hidden_state_seq = zeros(LENGTH_SEQ)
 observation_seq = zeros(LENGTH_SEQ)
 
@@ -69,7 +66,8 @@ end
 
 println(hidden_state_seq)
 println(observation_seq)
-
+return {"hid" => hidden_state_seq, "obs" => observation_seq}
+end
 
 
 

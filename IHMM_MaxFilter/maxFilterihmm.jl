@@ -1,18 +1,22 @@
+
+
+#seed = 1
 using Distributions
 using Debug
 using PyCall
 
+
 require("ComputeInferenceError.jl")
+require("SMCihmm.jl")
 
 
-
-type sequence
-	suff_stats # a dict from "low" and "top" to the suff stats for these levels
-	seq_history
-	current_state
-end
+# type sequence
+# 	suff_stats # a dict from "low" and "top" to the suff stats for these levels
+# 	seq_history
+# 	current_state
+# end
 @debug begin
-srand(1)
+#srand(1)
 ###################PARAMETERS#####################
 
 
@@ -32,22 +36,22 @@ obs_sequence = Dict()
 # 	seq_true = vcat(seq_true, obs_sequence[i])
 # end
 
-seq_true = [1.0,1.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,2.0,2.0,1.0,4.0,2.0,2.0,3.0,2.0,2.0,1.0,2.0,2.0,2.0,3.0,3.0,3.0,4.0,2.0,2.0,2.0]
-obs = [1.0,1.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,2.0,2.0,1.0,4.0,2.0,2.0,3.0,2.0,2.0,1.0,2.0,2.0,2.0,3.0,3.0,3.0,4.0,2.0,2.0,2.0]
+# seq_true = [1.0,1.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,2.0,2.0,1.0,4.0,2.0,2.0,3.0,2.0,2.0,1.0,2.0,2.0,2.0,3.0,3.0,3.0,4.0,2.0,2.0,2.0]
+# obs = [1.0,1.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,2.0,2.0,1.0,4.0,2.0,2.0,3.0,2.0,2.0,1.0,2.0,2.0,2.0,3.0,3.0,3.0,4.0,2.0,2.0,2.0]
 
-seq_true = [2.0,2.0,2.0,2.0,2.0,2.0,2.0,3.0,3.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,2.0,2.0,2.0,2.0,2.0,1.0,1.0,2.0,1.0,1.0]
-obs = [2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,3.0,1.0,1.0,2.0,3.0,1.0,1.0,2.0,1.0,1.0,1.0,1.0,2.0,4.0,1.0,2.0,2.0,1.0,1.0,2.0,1.0,1.0]
+# seq_true = [2.0,2.0,2.0,2.0,2.0,2.0,2.0,3.0,3.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,2.0,2.0,2.0,2.0,2.0,1.0,1.0,2.0,1.0,1.0]
+# obs = [2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,3.0,1.0,1.0,2.0,3.0,1.0,1.0,2.0,1.0,1.0,1.0,1.0,2.0,4.0,1.0,2.0,2.0,1.0,1.0,2.0,1.0,1.0]
 
-seq_true = [2.0,2.0,2.0,3.0,3.0,3.0,3.0,3.0,4.0,1.0,1.0,1.0,1.0,1.0,2.0,1.0,1.0,1.0,1.0,1.0,1.0,4.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0]
-obs = [2.0,2.0,2.0,3.0,3.0,3.0,3.0,3.0,4.0,4.0,1.0,1.0,1.0,1.0,3.0,1.0,1.0,3.0,1.0,2.0,1.0,4.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0]
+# seq_true = [2.0,2.0,2.0,3.0,3.0,3.0,3.0,3.0,4.0,1.0,1.0,1.0,1.0,1.0,2.0,1.0,1.0,1.0,1.0,1.0,1.0,4.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0]
+# obs = [2.0,2.0,2.0,3.0,3.0,3.0,3.0,3.0,4.0,4.0,1.0,1.0,1.0,1.0,3.0,1.0,1.0,3.0,1.0,2.0,1.0,4.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0]
 
 # seq_true = [1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,2.0,3.0,3.0,3.0,3.0,3.0,3.0,3.0,3.0,3.0,3.0,3.0,2.0,2.0,2.0,2.0,1.0,1.0,2.0,2.0,1.0]
 # obs = [3.0,1.0,1.0,1.0,3.0,1.0,2.0,1.0,2.0,2.0,3.0,3.0,2.0,3.0,3.0,3.0,3.0,1.0,3.0,3.0,4.0,3.0,2.0,2.0,2.0,1.0,1.0,2.0,2.0,1.0]
 
-SEQUENCE_LENGTH = length(seq_true)
-for j = 1:SEQUENCE_LENGTH
-	obs_sequence[j] = obs[j]
-end
+# SEQUENCE_LENGTH = length(seq_true)
+# for j = 1:SEQUENCE_LENGTH
+# 	obs_sequence[j] = obs[j]
+# end
 NUM_OBS = 4
 
 
@@ -169,8 +173,16 @@ end
 
 
 
-
-
+function main(seed)
+	#function body
+smc_error = mainSMC(seed)
+data_dict = main_generate(seed)
+seq_true = data_dict["hid"]
+obs = data_dict["obs"]
+SEQUENCE_LENGTH = length(seq_true)
+for j = 1:SEQUENCE_LENGTH
+	obs_sequence[j] = obs[j]
+end
 #########INIT SEQ
 suff_stats = Dict()
 suff_stats["low"] = Dict()
@@ -267,13 +279,15 @@ total_error = 0
 for h = 1:NUM_SAMPLES
 	sample_arr = rand(Multinomial(1, normalized_weight_vect))
 	idx = findin(sample_arr, 1)[1]
-	seq_inferred = particle_dict[1].seq_history
+	seq_inferred = particle_dict[idx].seq_history
 	total_error += computeError(seq_inferred, seq_true)
 end
 error = total_error / NUM_SAMPLES
-println(error)
+max_filter_error = error
 
-
+println("maxfilter error: ", error)
+return {"max_filter_error" => max_filter_error, "SMC_error" => smc_error}
+end
 
 # println((createCRFProbVect(current_sequence, 1)))
 
