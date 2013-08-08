@@ -14,7 +14,7 @@ import pickle
 from matplotlib import pyplot
 from matplotlib.backends.backend_pdf import PdfPages
 import math
-
+import operator
 
 def saveAsPDF(fname,plot):
     pp = PdfPages(fname)
@@ -35,7 +35,7 @@ def genericPlot(X,Y,xlab,ylab,fname):
 
 
 
-fname = 'result_10particles_30path'
+fname = 'putative_result_10particles_30path'
 data = pickle.load(open(fname+".pkl","rb"))
 
 f = pylab.figure()
@@ -50,6 +50,7 @@ with_eqmaxf = []
 
 for i in range(len(data)):
     if len(data[i]) > 0:
+        print i, float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[0]), float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[1]), float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[2]) 
         without_maxf.append(float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[0]))
         with_maxf.append(float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[1]))
         with_eqmaxf.append(float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[2]))
@@ -60,14 +61,15 @@ print 'Average (with_maxf):', sum(with_maxf)/len(data)
 print 'Average (with_eqmaxf):', sum(with_eqmaxf)/len(data)
 
 
-#ax.bar(X,Y,0.4,color='black')
-ax.plot(X,without_maxf, color="grey")
+ax.bar(X,map(operator.sub, with_eqmaxf, without_maxf),0.4,color='black')
+
+"""ax.plot(X,without_maxf, color="grey")
 ax.plot(X,with_maxf, color="black")
-ax.plot(X,with_eqmaxf, color="blue")
+ax.plot(X,with_eqmaxf, color="blue")"""
 
 
-pylab.xlabel('Run Number',fontsize=30)
-pylab.ylabel('ARI Difference',fontsize=30)
+pylab.xlabel('Dataset with different seed (same model parameters)',fontsize=15)
+pylab.ylabel('V-Measure Diff (30 samples avg/dataset)',fontsize=15)
 pylab.savefig(fname+'.png')
 #pylab.ylim([-0.35, 0.35])
 #ax.grid(True)

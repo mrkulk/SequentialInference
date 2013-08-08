@@ -37,7 +37,7 @@ const ENUMERATION = 0
 #const INTEGRAL_PATHS = 2#2
 
 const DIMENSIONS = 2
-NUM_POINTS = 100
+NUM_POINTS = 200
 state = Dict()
 particles = Dict()
 hyperparameters = Dict()
@@ -48,13 +48,13 @@ data = Dict()
 
 
 #################### DATA LOADER AND PLOTTING ##################################
-const COLORS =[[rand(),rand(),rand()] for i =1:50]
+const COLORS ={[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0],[1.0,1.0,0.0],[1.0,0.0,1.0], [rand(),rand(),rand()], [rand(),rand(),rand()], [rand(),rand(),rand()]}#[[rand(),rand(),rand()] for i =1:50]
 
 function plotPoints(data,fname)
 	for i=1:NUM_POINTS
 		pylab.plot(data[i][1],data[i][2], "o", color=COLORS[data[i]["c"]])
 	end
-	pylab.savefig(string(fname,".png"))
+	pylab.savefig(string("dump/",fname,".png"))
 end
 
 function plotPointsfromChain(time,)
@@ -64,13 +64,14 @@ function plotPointsfromChain(time,)
 	true_clusters = data["c_aggregate"][1:time]
 	#println("TRUEC:", true_clusters)
 	for N=1:length(particles[time])
-		#for i=1:time
-		#	pylab.plot(data[i][1],data[i][2], "o", color=COLORS[particles[time][N]["hidden_state"]["c_aggregate"][i]])
-		#end
+		for i=1:time
+			pylab.plot(data[i][1],data[i][2], "o", color=COLORS[particles[time][N]["hidden_state"]["c_aggregate"][i]])
+		end
 		inferred_clusters = particles[time][N]["hidden_state"]["c_aggregate"]
-		ariArr = myappend(ariArr, metrics.v_measure_score(inferred_clusters, true_clusters))#adjusted_rand_score(inferred_clusters, true_clusters))
+		curr_score = metrics.v_measure_score(inferred_clusters, true_clusters)
+		ariArr = myappend(ariArr, curr_score)#adjusted_rand_score(inferred_clusters, true_clusters))
 
-		#pylab.savefig(string("maxfilter:",MAXFILTERING, " NUMCLUSTER:", length(unique(inferred_clusters)) ," time:", time, " PARTICLE_",N,"_",".png"))
+		#pylab.savefig(string("dump/maxfilter:",MAXFILTERING, " SCORE:",curr_score ," NUMCLUSTER:", length(unique(inferred_clusters)) ," time:", time, " PARTICLE_",N,"_",".png"))
 	end
 	if length(ARGS) == 0
 		#println("time:", time," Maximum ARI: ", max(ariArr))
@@ -120,8 +121,17 @@ function loadObservations()
 	end
 
 	for i=1:NUM_POINTS
-		sample_arr = rand(Multinomial(1,mixture_weights))
-		idx = findin(sample_arr, 1)[1]
+		
+		if ONE_MODE_AT_TIME == true
+			idx = 1 + int(floor((i/(NUM_POINTS/3))))
+			if i == NUM_POINTS
+				idx -= 1
+			end
+		else
+			sample_arr = rand(Multinomial(1,mixture_weights))
+			idx = findin(sample_arr, 1)[1]
+		end
+		
 		data[i] = Dict()
 		data[i]["c"] = idx
 		data["c_aggregate"][i] = idx
@@ -374,6 +384,8 @@ function path_integral(time, N)
 	max_root_support = max(root_support)
 	if root_support[time-1] == max_root_support
 		root_support = unique(myappend(root_support, max_root_support+1))
+	else
+		root_support = unique(root_support)
 	end
 
 	new_max_root_support = max_root_support + 1
@@ -412,6 +424,9 @@ function putativeResample(time, particles_t, particles_t_minus_1, log_maxfilter_
 	normalized_probabilities -=  normalizing_constant
 	normalized_probabilities = exp(normalized_probabilities)
 
+	#print("time:", time)
+	#println(maxfilter_cid_array)
+	#println(normalized_probabilities)
 	for i = 1:NUM_PARTICLES
 		sample_arr = rand(Multinomial(1,normalized_probabilities))
 		sampled_indx = findin(sample_arr, 1)[1]
@@ -419,7 +434,9 @@ function putativeResample(time, particles_t, particles_t_minus_1, log_maxfilter_
 		state["c"] = maxfilter_cid_array[sampled_indx]
 		state["c_aggregate"] = myappend(particles_t_minus_1[maxfilter_particle_struct[sampled_indx]]["hidden_state"]["c_aggregate"], state["c"])
 		particles_t[i]["hidden_state"]=state
+		#print(state["c"]," | ")
 	end
+	#println()
 end
 
 
@@ -508,17 +525,18 @@ else
 	NUM_PARTICLES = 10#1
 	DELTA = 0#3#10
 	INTEGRAL_PATHS = 1#2
-	SEED = 5600#150 #5600
-	REPETITIONS = 1
+	SEED = 174#150 #5600
+	REPETITIONS = 10
 end
 
 #println(string("NUM_PARTICLES:", NUM_PARTICLES, " DELTA:", DELTA, " INTEGRAL_PATHS:", INTEGRAL_PATHS))
 
 LOOKAHEAD_DELTA = 0
 
+ONE_MODE_AT_TIME = false
+
 srand(SEED)
 data = loadObservations()
-
 
 MAXFILTERING = 1
 EQUIVALENCE_MAXFILTERING = 0
@@ -534,7 +552,7 @@ for i=1:REPETITIONS
 	EQUIVALENCE_MAXFILTERING = 0
 	_ari_without_maxf = run_sampler()
 	ari_without_maxf += _ari_without_maxf
-	#println("MULT-RESAMPLE:", _ari_without_maxf, "  MAXFILTER:", ari_with_maxf, " EQMAXF:", _ari_with_eqmaxf)
+	println("MULT-RESAMPLE:", _ari_without_maxf, "  MAXFILTER:", ari_with_maxf, " EQMAXF:", ari_with_eqmaxf)
 end
 
 ari_without_maxf /= REPETITIONS;
