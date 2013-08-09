@@ -338,7 +338,7 @@ return sqrt(MSE)
 end
 
 MSEwithoutlookahead = runExp(false)
-MSEwithlookahead = runExp(true)
+MSEwithlookahead = 0#runExp(true)
 
 #plt.savefig("foo3.png", bbox_inches=0)
 

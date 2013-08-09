@@ -76,12 +76,12 @@ function get_normalized_probabilities(z_posterior_array_probability)
 end
 
 
-function update_helper(original_time, cid, sampled_cid, soft_lambda, soft_u, soft_v, posterior, wordArr, ITER, DELTA_TIME)
+function update_helper(original_time, cid, sampled_cid, soft_lambda, soft_u, soft_v, posterior, wordArr, ITER, DELTA_TIME, time)
 	eta = hyperparameters["eta"]; alpha = hyperparameters["a"]
 	
 	is_new_cid = (has(soft_lambda,cid) == false)
 
-	LEARNING_RATE = 1/ITER
+	LEARNING_RATE = 1/time#1/ITER
 	
 	if is_new_cid == true
 		soft_lambda[cid] = Dict()
@@ -125,7 +125,7 @@ function update_statistics(original_time, current_support,  posterior,sampled_ci
 		end
 
 		if flag == 1
-			update_helper(original_time, cid, sampled_cid, soft_lambda, soft_u, soft_v, posterior, wordArr, ITER, DELTA_TIME)
+			update_helper(original_time, cid, sampled_cid, soft_lambda, soft_u, soft_v, posterior, wordArr, ITER, DELTA_TIME, time)
 		end
 	end
 
@@ -195,6 +195,7 @@ end
 
 
 function get_margin_loglikelihood(gibbs_wt, history_c_aggregate, prev_support, time, DELTA_TIME, prev_cid, N, data)
+
 	if DELTA_TIME == 0
 		return 0
 	end
@@ -205,7 +206,7 @@ function get_margin_loglikelihood(gibbs_wt, history_c_aggregate, prev_support, t
 	#current_support = myappend(prev_support, max(prev_support)+1)
 	current_support = deepcopy(history_support)
 
-	VARIATIONAL_ITERATIONS = 20
+	VARIATIONAL_ITERATIONS = 1
 	DEBUG = false
 
 	if DEBUG
@@ -285,7 +286,7 @@ function get_margin_loglikelihood(gibbs_wt, history_c_aggregate, prev_support, t
 		#if DEBUG
 		#println("--------------------------------------------")
 		#println(c_aggregate)
-		#println("ITER:",iter, " ARI:", metrics.v_measure_score(c_aggregate, true_topics[1:time+DELTA_TIME]))
+		println("ITER:",iter, " ARI:", metrics.v_measure_score(c_aggregate, true_topics[1:time+DELTA_TIME]))
 		#end
 	end
 
