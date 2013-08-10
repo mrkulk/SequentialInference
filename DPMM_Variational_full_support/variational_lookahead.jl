@@ -249,10 +249,6 @@ function get_margin_loglikelihood(gibbs_wt, history_c_aggregate, prev_support, t
 				## Choose support (j) by sampling cid from gibbs using mult
 				posterior, sampled_cid = sample_cid(z_posterior_array_probability, z_posterior_array_cid)
 				CONDITIONAL = 0
-				"""if t < time
-					sampled_cid = history_c_aggregate[t]
-					CONDITIONAL = 1
-				end"""
 			else
 			############### OUTSIDE LOOKAHEAD ##############
 				sampled_cid = history_c_aggregate[t]
@@ -286,7 +282,7 @@ function get_margin_loglikelihood(gibbs_wt, history_c_aggregate, prev_support, t
 		#if DEBUG
 		#println("--------------------------------------------")
 		#println(c_aggregate)
-		println("ITER:",iter, " ARI:", metrics.v_measure_score(c_aggregate, true_topics[1:time+DELTA_TIME]))
+		#println("ITER:",iter, " ARI:", metrics.v_measure_score(c_aggregate, true_topics[1:time+DELTA_TIME]))
 		#end
 	end
 
