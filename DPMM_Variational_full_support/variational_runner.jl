@@ -448,8 +448,12 @@ function run_sampler()
 		###### PARTICLE CREATION and EVOLUTION #######
 		particles[time]=Dict()
 		#println("TRUET:", true_topics[1:time])		
-		do_lookahead =(rand()>0.9)
-
+		do_lookahead = (rand()>0.9)
+		"""if mod(time, DELTA) == 0
+			do_lookahead = true
+		else
+			do_lookahead = false
+		end"""
 		for N=1:NUM_PARTICLES
 
 			if _DEBUG == 1
@@ -503,8 +507,8 @@ if length(ARGS) > 0
 	srand(SEED)
 else
 	NUM_PARTICLES = 1#1
-	DELTA = 50#50#20 will return without lookahead
-	SEED = 9699
+	DELTA = 15#50#20 will return without lookahead
+	SEED = 3
 	srand(SEED)
 end
 
@@ -514,25 +518,20 @@ data = loadObservations()
 GLOBAL_WORD_ARR=Dict()
 initWordArr(data)
 
-RESULT = []
-
 #print("WITHOUT LOOKAHEAD: ")
-nump = [1,10,20,50]
+NUM_PARTICLES = 100
+srand(SEED)
+LOOKAHEAD_DELTA = 0
+ari_without_lookahead = run_sampler()
 
-for ii in nump
-	NUM_PARTICLES = ii
-	LOOKAHEAD_DELTA = 0
-	RESULT = myappend(RESULT, run_sampler())
-end
 
 #print("\nWITH LOOKAHEAD: ")
 NUM_PARTICLES = 1
+srand(SEED)
 LOOKAHEAD_DELTA = DELTA
-ari_with_lookahead = run_sampler()
-RESULT = myappend(RESULT, run_sampler())
+ari_with_lookahead = 0#run_sampler()
 
-print(RESULT)
+print([ari_without_lookahead, ari_with_lookahead])
 
 end
-
 

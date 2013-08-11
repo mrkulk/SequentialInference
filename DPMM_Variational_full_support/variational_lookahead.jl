@@ -81,8 +81,13 @@ function update_helper(original_time, cid, sampled_cid, soft_lambda, soft_u, sof
 	
 	is_new_cid = (has(soft_lambda,cid) == false)
 
-	LEARNING_RATE = 1/time#1/ITER
-	
+	"""if original_time <= 200
+		LEARNING_RATE = 1/ITER
+	else
+		LEARNING_RATE = 1/time
+	end"""
+	LEARNING_RATE = 1/time
+
 	if is_new_cid == true
 		soft_lambda[cid] = Dict()
 		soft_u[cid]=0; soft_v[cid]=0;
@@ -195,7 +200,6 @@ end
 
 
 function get_margin_loglikelihood(gibbs_wt, history_c_aggregate, prev_support, time, DELTA_TIME, prev_cid, N, data)
-
 	if DELTA_TIME == 0
 		return 0
 	end
@@ -206,7 +210,7 @@ function get_margin_loglikelihood(gibbs_wt, history_c_aggregate, prev_support, t
 	#current_support = myappend(prev_support, max(prev_support)+1)
 	current_support = deepcopy(history_support)
 
-	VARIATIONAL_ITERATIONS = 1
+	VARIATIONAL_ITERATIONS = 1#20
 	DEBUG = false
 
 	if DEBUG
@@ -249,6 +253,10 @@ function get_margin_loglikelihood(gibbs_wt, history_c_aggregate, prev_support, t
 				## Choose support (j) by sampling cid from gibbs using mult
 				posterior, sampled_cid = sample_cid(z_posterior_array_probability, z_posterior_array_cid)
 				CONDITIONAL = 0
+				"""if t < time
+					sampled_cid = history_c_aggregate[t]
+					CONDITIONAL = 1
+				end"""
 			else
 			############### OUTSIDE LOOKAHEAD ##############
 				sampled_cid = history_c_aggregate[t]
@@ -312,7 +320,7 @@ function get_margin_loglikelihood(gibbs_wt, history_c_aggregate, prev_support, t
 	println("soft_lambda:", soft_lambda)
 	print(history_c_aggregate); print(c_aggregate, "\n\n")"""
 	
-	return logL# - log(DELTA_TIME)
+	return logL - log(DELTA_TIME)
 end
 
 

@@ -35,7 +35,7 @@ def genericPlot(X,Y,xlab,ylab,fname):
 
 
 
-fname = 'CHIBBS_WAS_DIVIDED_2013-07-240.933347_TRIALS_100_PARTICLES_1_DELTA_15'
+fname = 'aug11_13/TRIALS_100_PARTICLES_0_DELTA_50'
 data = pickle.load(open(fname+".pkl","rb"))
 
 f = pylab.figure()
@@ -47,8 +47,8 @@ nolookArr =[]
 lookArr = []
 for i in range(len(data)):
     if len(data[i]) > 0:
-        nolook = float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[0])
-        look = float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[1])
+        nolook = float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[3])
+        look = float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[4])
         nolookArr.append(nolook)
         lookArr.append(look)
         X.append(i)
