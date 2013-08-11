@@ -501,15 +501,15 @@ end
 #################### MAIN RUNNER ####################
 LOOKAHEAD_DELTA=0
 if length(ARGS) > 0
-	#NUM_PARTICLES = int(ARGS[1])
+	NUM_PARTICLES = int(ARGS[1])
 	DELTA = int(ARGS[2])
 	SEED = int(ARGS[3])
 	srand(SEED)
 else
-	NUM_PARTICLES = 1#1
+	"""NUM_PARTICLES = 1#1
 	DELTA = 15#50#20 will return without lookahead
 	SEED = 3
-	srand(SEED)
+	srand(SEED)"""
 end
 
 #println(string("NUM_PARTICLES:", NUM_PARTICLES, " DELTA:", DELTA, " INTEGRAL_PATHS:", INTEGRAL_PATHS))
@@ -520,15 +520,13 @@ initWordArr(data)
 
 #for ttt = 1:10
 #print("WITHOUT LOOKAHEAD: ")
-NUM_PARTICLES = 1
-#srand(SEED)
+#NUM_PARTICLES = 1
 LOOKAHEAD_DELTA = 0
 ari_without_lookahead = run_sampler()
 
 
 #print("\nWITH LOOKAHEAD: ")
-NUM_PARTICLES = 1
-#srand(SEED)
+#NUM_PARTICLES = 1
 LOOKAHEAD_DELTA = DELTA
 ari_with_lookahead = run_sampler()
 
