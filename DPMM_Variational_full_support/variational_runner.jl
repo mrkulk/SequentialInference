@@ -519,7 +519,7 @@ GLOBAL_WORD_ARR=Dict()
 initWordArr(data)
 
 #print("WITHOUT LOOKAHEAD: ")
-NUM_PARTICLES = 100
+NUM_PARTICLES = 1
 srand(SEED)
 LOOKAHEAD_DELTA = 0
 ari_without_lookahead = run_sampler()
