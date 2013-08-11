@@ -499,7 +499,7 @@ end
 
 
 #################### MAIN RUNNER ####################
-
+LOOKAHEAD_DELTA=0
 if length(ARGS) > 0
 	#NUM_PARTICLES = int(ARGS[1])
 	DELTA = int(ARGS[2])
@@ -518,20 +518,22 @@ data = loadObservations()
 GLOBAL_WORD_ARR=Dict()
 initWordArr(data)
 
+#for ttt = 1:10
 #print("WITHOUT LOOKAHEAD: ")
 NUM_PARTICLES = 1
-srand(SEED)
+#srand(SEED)
 LOOKAHEAD_DELTA = 0
 ari_without_lookahead = run_sampler()
 
 
 #print("\nWITH LOOKAHEAD: ")
 NUM_PARTICLES = 1
-srand(SEED)
+#srand(SEED)
 LOOKAHEAD_DELTA = DELTA
-ari_with_lookahead = 0#run_sampler()
+ari_with_lookahead = run_sampler()
 
 print([ari_without_lookahead, ari_with_lookahead])
+#end
 
 end
 
