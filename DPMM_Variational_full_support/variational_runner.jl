@@ -13,6 +13,7 @@ using NumericExtensions
 require("dataset.jl")
 require("variational_lookahead.jl")
 require("gradient.jl")
+require("maxfilter.jl")
 
 using NumericExtensions
 
@@ -44,7 +45,7 @@ const ENUMERATION = 0
 #srand(133) #133-b #10 #109
 
 WORDS_PER_DOC = 200
-NUM_DOCS = 500	#200
+NUM_DOCS = 100	#200
 NUM_TOPICS = NaN
 V = NaN
 state = Dict()
@@ -59,15 +60,15 @@ true_topics = []
 LRATE = hyperparameters["lrate"]
 
 #################### DATA LOADER AND PLOTTING ##################################
-
+"""
 function plotPoints(data,fname)
 	for i=1:NUM_POINTS
 		pylab.plot(data[i][1],data[i][2], "o", color=COLORS[data[i]["c"]])
 	end
 	pylab.savefig(string(fname,".png"))
-end
+end"""
 
-function plotPointsfromChain(time,)
+function plotPointsfromChain(time)
 	ariArr = []
 	pylab.clf()
 	for N=1:length(particles[time])
@@ -97,20 +98,27 @@ function loadObservations()
 	data = Dict()
 	theta, pi, V = dataset1()
 
-	#topics = []# [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]
 	#NUM_DOCS = length(topics)
 	true_topics = []
+	
+	syn_topics=[]
+	"""syn_topics=int(zeros(NUM_DOCS))
+	syn_topics[1:2:2000]=1;
+	syn_topics[1001:1500]=2;
+	syn_topics[1501:2000]=3;"""
+
 
 	data["c_aggregate"] = int(zeros(NUM_DOCS))
 	
 	for i = 1:NUM_DOCS
 		data[i] = Dict() #Create doc
-		"""if length(topics) == 0
+		if length(syn_topics) == 0
 			topic = rand(Multinomial(1,pi)); topic = findin(topic, 1)[1]
 		else
-			topic = topics[i]
-		end"""
-		topic = rand(Multinomial(1,pi)); topic = findin(topic, 1)[1]
+			topic = syn_topics[i]
+		end
+
+		#topic = rand(Multinomial(1,pi)); topic = findin(topic, 1)[1]
 
 		true_topics=myappend(true_topics, topic)
 		data["c_aggregate"][i] = topic
@@ -371,7 +379,9 @@ function path_integral(time, N, do_lookahead)
 	max_root_support=max(root_support)
 	wordArr = getWordArr(data,time)
 	z_posterior_array_probability = []; z_posterior_array_cid = []; lambda_sufficient_stats_ARR = Dict();
+	support_array = [];
 
+	cnt = 1
 	for j in root_support
 		current_c_aggregate = myappend(particles[time-1][N]["hidden_state"]["c_aggregate"], j)
 		zj_probability, lambda_sufficient_stats = get_posterior_zj(j, current_c_aggregate, time, N, root_support)
@@ -387,10 +397,12 @@ function path_integral(time, N, do_lookahead)
 
 		z_posterior_array_probability = myappend(z_posterior_array_probability, zj_probability)
 		z_posterior_array_cid = myappend(z_posterior_array_cid, j)
-		lambda_sufficient_stats_ARR[j] =  lambda_sufficient_stats
+		support_array = myappend(support_array, max_root_support)
+		#lambda_sufficient_stats_ARR[j] =  lambda_sufficient_stats
+		lambda_sufficient_stats_ARR[cnt] =  lambda_sufficient_stats; cnt+=1
 	end
 	
-	weight, sampled_cid = sample_cid(z_posterior_array_probability, z_posterior_array_cid)
+	"""weight, sampled_cid = sample_cid(z_posterior_array_probability, z_posterior_array_cid)
 
 	if sampled_cid == max_root_support #has(particles[time][N]["hidden_state"]["lambda"], sampled_cid) == true
 		update_newcluster_statistics(sampled_cid, data,time,wordArr, weight, N)
@@ -398,8 +410,57 @@ function path_integral(time, N, do_lookahead)
 		update_existingcluster_statistics(sampled_cid, data,time,wordArr, weight, N, lambda_sufficient_stats_ARR[sampled_cid])
 	end
 
-	return weight, sampled_cid
+	return weight, sampled_cid"""
+	return z_posterior_array_probability, z_posterior_array_cid, lambda_sufficient_stats_ARR, support_array
 end
+
+
+
+function update_lambda_after_resample(time, lambda_stats_putative_array)
+	wordArr = getWordArr(data,time)
+
+	for i = 1:NUM_PARTICLES
+		weight = particles[time][i]["weight"]
+		sampled_cid = particles[time][i]["hidden_state"]["c"]
+
+		if sampled_cid == particles[time][i]["max_support"]
+			update_newcluster_statistics(sampled_cid, data,time,wordArr, weight, i)
+		else
+			update_existingcluster_statistics(sampled_cid, data,time,wordArr, weight, i, lambda_stats_putative_array[particles[time][i]["hidden_state"]["sampled_indx"]])
+		end
+	end
+end
+
+function putativeResample(time, particles_t, particles_t_minus_1, log_maxfilter_probability_array, maxfilter_cid_array, maxfilter_particle_struct, support_array_putative)
+	normalizing_constant = logsumexp(log_maxfilter_probability_array)
+	normalized_probabilities = log_maxfilter_probability_array
+	normalized_probabilities -=  normalizing_constant
+	normalized_probabilities = exp(normalized_probabilities)
+
+	#print("time:", time)
+	#println(maxfilter_cid_array)
+	#println(normalized_probabilities)
+
+	for i = 1:NUM_PARTICLES
+		sample_arr = rand(Multinomial(1,normalized_probabilities))
+		sampled_indx = findin(sample_arr, 1)[1]
+
+		particles_t[i]["hidden_state"]["c"] = maxfilter_cid_array[sampled_indx]
+		particles_t[i]["hidden_state"]["sampled_indx"] = sampled_indx
+		particles_t[i]["hidden_state"]["c_aggregate"] = myappend(particles_t_minus_1[maxfilter_particle_struct[sampled_indx]]["hidden_state"]["c_aggregate"], particles_t[i]["hidden_state"]["c"])
+		particles_t[i]["weight"] = log_maxfilter_probability_array[sampled_indx]
+		particles_t[i]["max_support"] = support_array_putative[sampled_indx] #######################################################
+		
+		particles_t[i]["hidden_state"]["lambda"] = deepcopy(particles_t_minus_1[maxfilter_particle_struct[sampled_indx]]["hidden_state"]["lambda"])
+		particles_t[i]["hidden_state"]["soft_lambda"] = deepcopy(particles_t_minus_1[maxfilter_particle_struct[sampled_indx]]["hidden_state"]["soft_lambda"])
+		particles_t[i]["hidden_state"]["soft_u"] = deepcopy(particles_t_minus_1[maxfilter_particle_struct[sampled_indx]]["hidden_state"]["soft_u"])
+		particles_t[i]["hidden_state"]["soft_v"] = deepcopy(particles_t_minus_1[maxfilter_particle_struct[sampled_indx]]["hidden_state"]["soft_v"])
+
+		#print(state["c"]," | ")
+	end
+	#println()
+end
+
 
 
 function run_sampler()
@@ -442,55 +503,66 @@ function run_sampler()
 
 		if length(ARGS) == 0
 			#println("##################")
-			#println("time: ", time)
+			println("time: ", time)
 		end
 
 		###### PARTICLE CREATION and EVOLUTION #######
 		particles[time]=Dict()
-		#println("TRUET:", true_topics[1:time])		
-		do_lookahead = (rand()>0.9)
-		"""if mod(time, DELTA) == 0
-			do_lookahead = true
-		else
-			do_lookahead = false
-		end"""
+		maxfilter_probability_array = []
+		maxfilter_cid_array = []
+		maxfilter_particle_struct=[]
+		
+		log_maxfilter_probability_array = []
+		support_array_putative = []
+		lambda_stats_putative_array=Dict()
+		is_new_cid_array = []
+		
+		do_lookahead = true
+
+		cnt = 1
 		for N=1:NUM_PARTICLES
 
 			if _DEBUG == 1
 				println("PARTICLE:", N ," weight:", particles[time-1][N]["weight"], " support:",support)		
 			end
 
-			particles[time][N] = Dict(); 
+			particles[time][N] = Dict()
 			particles[time][N]["hidden_state"] = Dict();
 			particles[time][N]["hidden_state"]["lambda"] = deepcopy(particles[time-1][N]["hidden_state"]["lambda"])
 			particles[time][N]["hidden_state"]["soft_lambda"] = deepcopy(particles[time-1][N]["hidden_state"]["soft_lambda"])
 			particles[time][N]["hidden_state"]["soft_u"] = deepcopy(particles[time-1][N]["hidden_state"]["soft_u"])
 			particles[time][N]["hidden_state"]["soft_v"] = deepcopy(particles[time-1][N]["hidden_state"]["soft_v"])
-			
-			particles[time][N]["weight"], sampled_cid = path_integral(time,N, do_lookahead)
 
-			##println("[[CHOSEN]] sampled_cid:",sampled_cid, " LAMBDA:", particles[time][N]["hidden_state"]["lambda"])
-			
-			particles[time][N]["hidden_state"]["c"] = sampled_cid
-			particles[time][N]["hidden_state"]["c_aggregate"] = myappend(particles[time-1][N]["hidden_state"]["c_aggregate"], sampled_cid)
-
-			"""misses = 0
-			for jj = 1:length(particles[time][N]["hidden_state"]["c_aggregate"])
-				if particles[time][N]["hidden_state"]["c_aggregate"][jj] != true_topics[jj]
-					misses += 1
-				end
+			z_posterior_array_probability, z_posterior_array_cid, lambda_sufficient_stats_ARR, support_array = path_integral(time,N, do_lookahead)
+			for ii=1:length(z_posterior_array_probability)
+				maxfilter_probability_array = myappend(maxfilter_probability_array, exp(z_posterior_array_probability[ii]))
+				log_maxfilter_probability_array = myappend(log_maxfilter_probability_array, z_posterior_array_probability[ii])
+				maxfilter_cid_array = myappend(maxfilter_cid_array, z_posterior_array_cid[ii])
+				maxfilter_particle_struct = myappend(maxfilter_particle_struct, N)
+				support_array_putative = myappend(support_array_putative, support_array[ii])
+				lambda_stats_putative_array[cnt] = lambda_sufficient_stats_ARR[ii]
+				cnt+=1
 			end
-			println("INFER:", particles[time][N]["hidden_state"]["c_aggregate"], "Misses:", misses, " W:", particles[time][N]["weight"])"""
 		end
-		#println("=-=-=-=-=-=")
 
-		normalizeWeights(time)
-		resample(time)
+		if MAXFILTERING == 1
+			if EQUIVALENCE_MAXFILTERING == 1
+				stratifiedMaxFiltering(time, particles[time], deepcopy(particles[time-1]), maxfilter_probability_array, maxfilter_cid_array,maxfilter_particle_struct, NUM_PARTICLES, log_maxfilter_probability_array, support_array_putative)	
+			else
+				maxFilter(particles[time], deepcopy(particles[time-1]), maxfilter_probability_array, maxfilter_cid_array, maxfilter_particle_struct, NUM_PARTICLES)
+			end
+		else
+			putativeResample(time, particles[time], deepcopy(particles[time-1]), log_maxfilter_probability_array, maxfilter_cid_array, maxfilter_particle_struct, support_array_putative)
+			#normalizeWeights(time)
+			#resample(time)
+			#recycle(time)
+		end
+
+		update_lambda_after_resample(time, lambda_stats_putative_array)
 		recycle(time)
+
 		#println(particles)
 		if mod(time, NUM_DOCS) == 0
-			#println("TRUET:", true_topics)
-			#println("INFER:", particles[time][1]["hidden_state"]["c_aggregate"])
 			return plotPointsfromChain(time)
 		end
 	end
@@ -506,13 +578,15 @@ if length(ARGS) > 0
 	SEED = int(ARGS[3])
 	srand(SEED)
 else
-	"""NUM_PARTICLES = 1#1
-	DELTA = 15#50#20 will return without lookahead
-	SEED = 3
-	srand(SEED)"""
+	NUM_PARTICLES = 20#1
+	DELTA = 15#15#50#20 will return without lookahead
+	SEED = 12
+	srand(SEED)
 end
 
-#println(string("NUM_PARTICLES:", NUM_PARTICLES, " DELTA:", DELTA, " INTEGRAL_PATHS:", INTEGRAL_PATHS))
+MAXFILTERING=1
+EQUIVALENCE_MAXFILTERING=1
+
 data = loadObservations()
 
 GLOBAL_WORD_ARR=Dict()
@@ -522,7 +596,7 @@ initWordArr(data)
 #print("WITHOUT LOOKAHEAD: ")
 #NUM_PARTICLES = 1
 LOOKAHEAD_DELTA = 0
-ari_without_lookahead = run_sampler()
+ari_without_lookahead = 0#run_sampler()
 
 
 #print("\nWITH LOOKAHEAD: ")

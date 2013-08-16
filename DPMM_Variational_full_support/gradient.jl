@@ -42,6 +42,7 @@ end
 
 function update_newcluster_statistics(sampled_cid, data, time, wordArr, posterior, N)
 	## create new lambda ##
+
 	particles[time][N]["hidden_state"]["lambda"][sampled_cid] = Dict()
 	for word = 1:V
 		particles[time][N]["hidden_state"]["lambda"][sampled_cid][word] = hyperparameters["eta"] + wordArr[word]
