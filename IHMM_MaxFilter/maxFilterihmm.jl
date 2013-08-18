@@ -5,10 +5,19 @@ using Distributions
 using Debug
 using PyCall
 
+ALICE_DATASET_MODE = true
 
-require("ComputeInferenceError.jl")
-require("SMCihmm.jl")
-
+if ALICE_DATASET_MODE == true
+	require("alice_dataprep.jl")
+	type sequence
+		suff_stats # a dict from "low" and "top" to the suff stats for these levels
+		seq_history
+		current_state
+	end
+else
+	require("ComputeInferenceError.jl")
+	require("SMCihmm.jl")
+end
 
 # type sequence
 # 	suff_stats # a dict from "low" and "top" to the suff stats for these levels
@@ -22,9 +31,9 @@ require("SMCihmm.jl")
 
 TOP_ALPHA = 1
 LOW_ALPHA = 1
-OBS_ALPHA = 1
+OBS_ALPHA = 0.3
 NUM_PARTICLES = 10
-NUM_SAMPLES = 100
+NUM_OBS = NaN
 
 obs_sequence = Dict()
 # obs_sequence[1] = 1
@@ -52,7 +61,6 @@ obs_sequence = Dict()
 # for j = 1:SEQUENCE_LENGTH
 # 	obs_sequence[j] = obs[j]
 # end
-NUM_OBS = 4
 
 
 
@@ -174,138 +182,131 @@ end
 
 
 function main(seed)
-	#function body
-smc_error = mainSMC(seed)
-data_dict = main_generate(seed)
-seq_true = data_dict["hid"]
-obs = data_dict["obs"]
-SEQUENCE_LENGTH = length(seq_true)
-for j = 1:SEQUENCE_LENGTH
-	obs_sequence[j] = obs[j]
-end
-#########INIT SEQ
-suff_stats = Dict()
-suff_stats["low"] = Dict()
-suff_stats["top"] = Dict()
-suff_stats["low"][-1] = Dict()
-#suff_stats["low"][-1][1] = 0
-suff_stats["top"] = Dict()
-#suff_stats["top"][1] = 0
-suff_stats["obs"] = Dict()
-suff_stats["obs"][1] = Dict()
-for obs_key = 1:NUM_OBS
-	suff_stats["obs"][1][obs_key] = 0
-end
+		#function body
+	if ALICE_DATASET_MODE == false
+		smc_error = mainSMC(seed)
+	end
 
-seq_history = zeros(SEQUENCE_LENGTH)
-current_sequence = sequence(suff_stats, seq_history, -1)
+	if ALICE_DATASET_MODE == true
+		data_dict, NUM_OBS = get_AW_dataset(seed)
+	end
 
+	seq_true = data_dict["hid"]
+	obs = data_dict["obs"]
+	SEQUENCE_LENGTH = length(seq_true)
+	for j = 1:SEQUENCE_LENGTH
+		obs_sequence[j] = obs[j]
+	end
+	#########INIT SEQ
+	suff_stats = Dict()
+	suff_stats["low"] = Dict()
+	suff_stats["top"] = Dict()
+	suff_stats["low"][-1] = Dict()
+	#suff_stats["low"][-1][1] = 0
+	suff_stats["top"] = Dict()
+	#suff_stats["top"][1] = 0
+	suff_stats["obs"] = Dict()
+	suff_stats["obs"][1] = Dict()
+	for obs_key = 1:NUM_OBS
+		suff_stats["obs"][1][obs_key] = 0
+	end
 
-
-###################INIT PARTICLES
-particle_dict = Dict()
-for p = 1:NUM_PARTICLES
-	particle_dict[p] = deepcopy(current_sequence)
-end
+	seq_history = zeros(SEQUENCE_LENGTH)
+	current_sequence = sequence(suff_stats, seq_history, -1)
 
 
-weight_vect = zeros(NUM_PARTICLES)
-for t = 1:SEQUENCE_LENGTH
+
+	###################INIT PARTICLES
+	particle_dict = Dict()
+	for p = 1:NUM_PARTICLES
+		particle_dict[p] = deepcopy(current_sequence)
+	end
+
+
 	weight_vect = zeros(NUM_PARTICLES)
-	# if t == 3
-	# 	@bp
-	# end
-	prob_vect_concated = []
-	state_particle_pair_list = []
-	#creating the prob vectors for time t and sorting the probs
-	for p_num = 1:NUM_PARTICLES
-		prob_vect = createCRFProbVect(particle_dict[p_num], obs_sequence[t])
-		prob_vect_concated = vcat(prob_vect_concated, prob_vect)
-		prob_vect_encoded = changeProbIndexes(prob_vect)
-		for ll = 1:length(prob_vect)
-			state_particle_pair_list = vcat(state_particle_pair_list, (prob_vect_encoded[ll], p_num, ll) )
-		end
-	end
-	perm = sortperm(prob_vect_concated, Sort.Reverse)
-	prob_vect_concated = prob_vect_concated[perm]
-	state_particle_pair_list = state_particle_pair_list[perm]
-	list_of_states = [pair[1] for pair in state_particle_pair_list]
-	list_of_particles = [pair[2] for pair in state_particle_pair_list]
-	list_of_indices = [pair[3] for pair in state_particle_pair_list]
-	unique_state_list = unique(list_of_states)
-
-	
-	
-
-	#now extending the particles for time t by selecting from the particles (note that we are still at time t)
-	particle_dict_temp = Dict()
-
-	num_of_uniques_added = 0 
-	for lll = 1:min(length(unique_state_list), NUM_PARTICLES)
-		first_index = find(list_of_states .== unique_state_list[lll])[1]
-		max_particle = state_particle_pair_list[first_index][2] #finding the cluster with max prob
-		prob_of_index = prob_vect_concated[first_index]#check if it's not zero
-		if prob_of_index != 0
-			particle_dict_temp[lll] = deepcopy(particle_dict[max_particle])
-			updateIHMMSuffStat(particle_dict_temp[lll], list_of_indices[first_index], t, obs_sequence[t])
-			num_of_uniques_added += 1
-			weight_vect[lll] = prob_of_index
-		end
-
-	end
-	
-	if num_of_uniques_added < NUM_PARTICLES
-		nonunique_particles = (num_of_uniques_added + 1):NUM_PARTICLES
-		# for kk in state_particle_pair_list
-		# 	if contains(unique_state_list, kk[1]) == false
-		# 		vcat(nonunique_particles, kk[2])
-		# 	end
+	for t = 1:SEQUENCE_LENGTH
+		weight_vect = zeros(NUM_PARTICLES)
+		# if t == 3
+		# 	@bp
 		# end
-		
-		for s in nonunique_particles
-			particle_dict_temp[s] = deepcopy(particle_dict_temp[1])
-			weight_vect[s] = weight_vect[1]
+		prob_vect_concated = []
+		state_particle_pair_list = []
+		#creating the prob vectors for time t and sorting the probs
+		for p_num = 1:NUM_PARTICLES
+			prob_vect = createCRFProbVect(particle_dict[p_num], obs_sequence[t])
+			prob_vect_concated = vcat(prob_vect_concated, prob_vect)
+			prob_vect_encoded = changeProbIndexes(prob_vect)
+			for ll = 1:length(prob_vect)
+				state_particle_pair_list = vcat(state_particle_pair_list, (prob_vect_encoded[ll], p_num, ll) )
+			end
 		end
+		perm = sortperm(prob_vect_concated, Sort.Reverse)
+		prob_vect_concated = prob_vect_concated[perm]
+		state_particle_pair_list = state_particle_pair_list[perm]
+		list_of_states = [pair[1] for pair in state_particle_pair_list]
+		list_of_particles = [pair[2] for pair in state_particle_pair_list]
+		list_of_indices = [pair[3] for pair in state_particle_pair_list]
+		unique_state_list = unique(list_of_states)
+
+		
+		
+
+		#now extending the particles for time t by selecting from the particles (note that we are still at time t)
+		particle_dict_temp = Dict()
+
+		num_of_uniques_added = 0 
+		for lll = 1:min(length(unique_state_list), NUM_PARTICLES)
+			first_index = find(list_of_states .== unique_state_list[lll])[1]
+			max_particle = state_particle_pair_list[first_index][2] #finding the cluster with max prob
+			prob_of_index = prob_vect_concated[first_index]#check if it's not zero
+			if prob_of_index != 0
+				particle_dict_temp[lll] = deepcopy(particle_dict[max_particle])
+				updateIHMMSuffStat(particle_dict_temp[lll], list_of_indices[first_index], t, obs_sequence[t])
+				num_of_uniques_added += 1
+				weight_vect[lll] = prob_of_index
+			end
+
+		end
+		
+		if num_of_uniques_added < NUM_PARTICLES
+			nonunique_particles = (num_of_uniques_added + 1):NUM_PARTICLES
+			# for kk in state_particle_pair_list
+			# 	if contains(unique_state_list, kk[1]) == false
+			# 		vcat(nonunique_particles, kk[2])
+			# 	end
+			# end
+			
+			for s in nonunique_particles
+				particle_dict_temp[s] = deepcopy(particle_dict_temp[1])
+				weight_vect[s] = weight_vect[1]
+			end
+		end
+		particle_dict = deepcopy(particle_dict_temp)
+		print(particle_dict[1].seq_history[t], " ")
+		# println()
 	end
-	particle_dict = deepcopy(particle_dict_temp)
-	# println(particle_dict)
-	# println()
+
+
+	normalized_weight_vect = weight_vect / sum(weight_vect)
+	println(normalized_weight_vect)
+
+	# total_error = 0
+	# for h = 1:NUM_SAMPLES
+	# 	sample_arr = rand(Multinomial(1, normalized_weight_vect))
+	# 	idx = findin(sample_arr, 1)[1]
+	# 	seq_inferred = particle_dict[idx].seq_history
+	# 	total_error += computeError(seq_inferred, seq_true)
+	# end
+	# error = total_error / NUM_SAMPLES
+	# max_filter_error = error
+
+	# println("maxfilter error: ", error)
+	# return {"max_filter_error" => max_filter_error, "SMC_error" => smc_error}
 end
 
-
-normalized_weight_vect = weight_vect / sum(weight_vect)
-
-total_error = 0
-for h = 1:NUM_SAMPLES
-	sample_arr = rand(Multinomial(1, normalized_weight_vect))
-	idx = findin(sample_arr, 1)[1]
-	seq_inferred = particle_dict[idx].seq_history
-	total_error += computeError(seq_inferred, seq_true)
-end
-error = total_error / NUM_SAMPLES
-max_filter_error = error
-
-println("maxfilter error: ", error)
-return {"max_filter_error" => max_filter_error, "SMC_error" => smc_error}
-end
-
-# println((createCRFProbVect(current_sequence, 1)))
-
-# updateIHMMSuffStat(current_sequence, 1, 1, 1)
-# println(current_sequence)
-# println((createCRFProbVect(current_sequence, 1)))
-
+main(0)
 
 end
-
-
-########################################################################
-# suff_stats["low"][1][2] = 23
-# suff_stats["low"][1][3] = 22
-# suff_stats["top"][1] = 1
-# suff_stats["top"][2] = 1
-# suff_stats["top"][3] = 1
-
 
 
 

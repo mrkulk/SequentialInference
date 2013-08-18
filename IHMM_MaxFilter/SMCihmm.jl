@@ -5,7 +5,10 @@ using Distributions
 using Debug
 using PyCall
 
-require("ComputeInferenceError.jl")
+
+if ALICE_DATASET_MODE == false
+	require("ComputeInferenceError.jl")
+end
 require("GenerateData.jl")
 
 
