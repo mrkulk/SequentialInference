@@ -17,8 +17,10 @@ record_indx = [];
 
 for i=1:length(sorted_w)
     sampled_ind = sorted_indx_array(i); 
-    if isKey(hash, int2str(x(:,sampled_ind))) == 0
-        hash(int2str(x(:,sampled_ind))) = 1;
+    val = x(:,sampled_ind); %first dim is particle num. second is cluster-id
+    val = val(2);
+    if isKey(hash, int2str(val)) == 0
+        hash(int2str(val)) = 1;
         record_indx(cnt)=sampled_ind;
         cnt=cnt+1;
     end
@@ -31,7 +33,7 @@ for i = 1:N
     if i <= len_rec
         sampled_ind = record_indx(i);
     else
-        sampled_ind = sorted_indx_array(cnt); 
+        sampled_ind = record_indx(1);%sorted_indx_array(cnt); 
         cnt=cnt+1;
     end
     rx(:,i) = x(:,sampled_ind);
