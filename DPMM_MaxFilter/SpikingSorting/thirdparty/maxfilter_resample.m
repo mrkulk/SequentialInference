@@ -33,7 +33,8 @@ for i = 1:N
     if i <= len_rec
         sampled_ind = record_indx(i);
     else
-        sampled_ind = record_indx(1);%sorted_indx_array(cnt); 
+        %sampled_ind = record_indx(1);
+        sampled_ind = sorted_indx_array(cnt);
         cnt=cnt+1;
     end
     rx(:,i) = x(:,sampled_ind);

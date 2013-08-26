@@ -14,7 +14,7 @@ function [ret_particles, ret_weights, ret_K_plus, means, sum_squares, inv_cov, l
 % data is processed one observation at a time and the particle set is
 % also returned having observed each observation
 
-RESAMPLE_SCHEME = 'MAXFILTER';
+RESAMPLE_SCHEME = 'STR';
 pc_max_ind = 1e5;
 pc_gammaln_by_2 = 1:pc_max_ind;
 pc_gammaln_by_2 = gammaln(pc_gammaln_by_2/2);

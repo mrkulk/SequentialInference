@@ -16,7 +16,7 @@
 GIBBS = 0;
 load times_CSC4;
 
-inspk=inspk(:,1:10);%[1,3]);
+inspk=inspk(:,[1,3]);%[1,3]);
 inspk=inspk(1:1:size(inspk,1),:);
 
 %%Normalizing data
@@ -24,9 +24,27 @@ for i=1:size(inspk,2)
     inspk(:,i) = (inspk(:,i)-mean(inspk(:,i)))/std(inspk(:,i));
 end
 
-reduced_dimensionality_waveforms = inspk;
-spike_dimensions_to_retain = size(inspk,2);
-number_of_spikes = size(inspk,1);
+if 1==1
+    reduced_dimensionality_waveforms = inspk;
+    spike_dimensions_to_retain = size(inspk,2);
+    number_of_spikes = size(inspk,1);
+else
+    [U,S,V] = svd(cov(spikes));
+    U = eye(spike_dimensions_to_retain);
+    reduced_dimensionality_waveforms = spikes*U(:,1:spike_dimensions_to_retain);
+    % report how much of the variance is accounted for by first few dims
+    percent_of_variance_accounted_for = diag(S)/sum(diag(S));
+    disp(['Percent of variance accounted for by first ' num2str(spike_dimensions_to_retain) ' eigenvectors (PCA) : ' num2str(sum(percent_of_variance_accounted_for(1:spike_dimensions_to_retain)))]);
+end
+
+%in_sample_points = 1000;%number_of_spikes;
+%in_sample_training_data = reduced_dimensionality_waveforms(1:in_sample_points,:);
+%out_of_sample_training_data = reduced_dimensionality_waveforms(in_sample_points+1:end,:);
+in_sample_training_data = reduced_dimensionality_waveforms(1:2:number_of_spikes,:);
+out_of_sample_training_data = reduced_dimensionality_waveforms(2:2:number_of_spikes,:);
+in_sample_points = size(in_sample_training_data, 1);
+
+
 
 % OK, now we have reduced_dimensionality_waveforms.  Let's set up the
 % priors for model estimation.  In this case we have the advantage of
@@ -56,22 +74,26 @@ number_of_spikes = size(inspk,1);
 %%%%%%%%%%%%%%% REPEAT THIS
 %% 
 mu_0 = zeros(spike_dimensions_to_retain,1);
-k_0 = 0.01;%.05;
-lambda_0 = eye(spike_dimensions_to_retain)*3;%1.5;
+k_0 = 0.01;%0.01%.05;
+lambda_0 = eye(spike_dimensions_to_retain)*1;%3%1.5;
+%lambda_0(1,1)=0.01;
+%lambda_0(2,2)=0.01;
 
 
 v_0 = spike_dimensions_to_retain+1;%5
-a_0 = 1;
-b_0 = 1;
+a_0 =1;
+b_0 =1;
 [samples labels means covariances] = sample_igmm_prior(number_of_spikes,a_0,b_0,mu_0,lambda_0,k_0,v_0);
+% 
+% figure(2) 
+% scatter(samples(:,1),samples(:,2),[],labels,'.');
+% figure(3)
+% scatter(in_sample_training_data(:,1),in_sample_training_data(:,2),[],'.');
+% 
+% %%%%%%%%%%%%%% END REPEAT
+% return 
 
-%figure(2) 
-%scatter(samples(:,1),samples(:,2),[],labels);
-%%%%%%%%%%%%%%% END REPEAT
 
-in_sample_points = 1000;%number_of_spikes;
-in_sample_training_data = reduced_dimensionality_waveforms(1:in_sample_points,:);
-out_of_sample_training_data = reduced_dimensionality_waveforms(in_sample_points+1:end,:);
 
 if GIBBS == 1
     %%
@@ -81,7 +103,6 @@ if GIBBS == 1
     % estimation.  Doing this is _not necessary_ and particle filter estimation
     % can be used from the start, but doing this makes it easier to debug the
     % spike sorter
-    in_sample_points = 1000;%number_of_spikes;
     in_sample_training_data = reduced_dimensionality_waveforms(1:in_sample_points,:);
     %% do not have in_sample_training_data_labels = class_labels(1:in_sample_points,:);
     out_of_sample_training_data = reduced_dimensionality_waveforms(in_sample_points+1:end,:);
@@ -135,7 +156,7 @@ end
 % filter suffers from one drawback, namely, alpha is instead
 % treated as a parameter instead of a random variable.  This is a difficult 
 % technical issue.
-num_particles = 50;%num_sweeps-burned_in_index+1;
+num_particles = 5;%num_sweeps-burned_in_index+1;
 [spike_sortings, spike_sorting_weights, number_of_neurons_in_each_sorting, PF_means, PF_sum_squares, PF_inv_cov, PF_log_det_cov, PF_counts] = particle_filter(in_sample_training_data', ...
     num_particles, a_0, b_0, mu_0, k_0, v_0, ...
     lambda_0,1);
@@ -161,7 +182,13 @@ num_particles = 50;%num_sweeps-burned_in_index+1;
 map_spike_sorting_index = find(spike_sorting_weights == max(spike_sorting_weights),1);
 map_spike_sorting = spike_sortings(map_spike_sorting_index,:);
 figure(6)
-scatter(in_sample_training_data(:,1),in_sample_training_data(:,2),[],map_spike_sorting);
+scatter(in_sample_training_data(:,1),in_sample_training_data(:,2),[],map_spike_sorting,'.');
+
+
+% % figure(7);
+% % true=cluster_class(1:2:9195,1)';
+% % scatter(in_sample_training_data(:,1),in_sample_training_data(:,2),[],true,'.');
+
 title('MAP Spike sorting')
 % if you compare this to figure 1 you will notice that the colors assigned
 % to each class are probably different -- that's because the distribution
@@ -194,7 +221,7 @@ if 1==0
         colors{i} = colors{i};
     end
 
-    figure(7)
+    figure(8)
     for i=1:size(map_spike_sorting,2)
        plot(spikes(i,:),'Color', colors{map_spike_sorting(i)});hold all; 
     end
@@ -202,7 +229,7 @@ if 1==0
 
     %selective plot
     for ii=0:length(unique(map_spike_sorting))
-        figure(8+ii)
+        figure(9+ii)
         for i=1:size(map_spike_sorting,2)
             if map_spike_sorting(i) == ii
                 plot(spikes(i,:),'Color', colors{map_spike_sorting(i)});hold all; 
@@ -212,36 +239,44 @@ if 1==0
 end
 
 %% Calculate Held out likelihood
+if 1==1
+    pc_max_ind = 1e5;
+    pc_gammaln_by_2 = 1:pc_max_ind;
+    pc_gammaln_by_2 = gammaln(pc_gammaln_by_2/2);
+    pc_log_pi = reallog(pi);
+    pc_log = reallog(1:pc_max_ind);
 
-pc_max_ind = 1e5;
-pc_gammaln_by_2 = 1:pc_max_ind;
-pc_gammaln_by_2 = gammaln(pc_gammaln_by_2/2);
-pc_log_pi = reallog(pi);
-pc_log = reallog(1:pc_max_ind);
+    inv_Sigma = PF_inv_cov;
+    log_det_Sigma = PF_log_det_cov;
 
-inv_Sigma = PF_inv_cov;
-log_det_Sigma = PF_log_det_cov;
-    
-for index=1:size(spike_sortings,1)
-    
-    index = map_spike_sorting_index;
-    
-    heldout_loglikelihood = 0;
-    K = number_of_neurons_in_each_sorting(index);%MAP_number_of_neurons;
-    for i=1:size(out_of_sample_training_data, 1)
-        y = out_of_sample_training_data(i,:)';
-        for kid=1:K %Integrating cluster assigments
-            n = length(find(spike_sortings(index,:) ==kid ));%length(find(map_spike_sorting==kid)); 
-            m_Y = PF_means(:,kid, index,1);%map_spike_sorting_index,1);
-            SS=PF_sum_squares(:,:,kid,index,1);%map_spike_sorting_index,1);
-            [lp ldc ic] = lp_tpp_helper(pc_max_ind,pc_gammaln_by_2,pc_log_pi,pc_log,y,n,m_Y,SS,k_0,mu_0,v_0,lambda_0);%, log_det_Sigma, inv_Sigma);
-            heldout_loglikelihood = heldout_loglikelihood + lp;
+    for index=1:size(spike_sortings,1)
+
+        index = map_spike_sorting_index;
+
+        heldout_loglikelihood = 0;
+        K = number_of_neurons_in_each_sorting(index);%MAP_number_of_neurons;
+        for i=1:size(out_of_sample_training_data, 1)
+            y = out_of_sample_training_data(i,:)';
+            for kid=1:K %Integrating cluster assigments
+                n = length(find(spike_sortings(index,:) ==kid ));%length(find(map_spike_sorting==kid)); 
+
+                m_Y = PF_means(:,kid, index,1);%map_spike_sorting_index,1);
+                SS=PF_sum_squares(:,:,kid,index,1);%map_spike_sorting_index,1);
+                ldetS = log_det_Sigma(kid,index,1);
+                invS = inv_Sigma(:,:,kid,index,1);
+
+                [lp ldc ic] = lp_tpp_helper(pc_max_ind,pc_gammaln_by_2,pc_log_pi,pc_log,y,n,m_Y,SS,k_0,mu_0,v_0,lambda_0, ldetS, invS);
+                heldout_loglikelihood = heldout_loglikelihood + lp;
+            end
         end
+        index
+        heldout_loglikelihood
+        disp('------------');
+        %lp_mvniw(map_spike_sorting(:,1001:8195),inspk(1001:9195,:)', mu_0, k_0,3,lambda_0)
+
+        return
     end
-    index
-    heldout_loglikelihood
-    disp('------------');
-    %lp_mvniw(map_spike_sorting(:,1001:8195),inspk(1001:9195,:)', mu_0, k_0,3,lambda_0)
     
-    return
 end
+
+    
