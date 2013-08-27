@@ -41,11 +41,14 @@ for i=1:N
    tmp = hash(int2str(i));
    if isempty(tmp) == 0
        sampled_ind = tmp(1);
-       tmp(1)=[];
+       %tmp(1)=[];
+       tmp=tmp([2:end 1]);
        hash(int2str(i))=tmp;
        rx(:,i) = x(:,sampled_ind);
        rw(i) = w(sampled_ind);
    end
+   
+   
 end
 
 
