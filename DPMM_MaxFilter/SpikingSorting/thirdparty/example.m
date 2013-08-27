@@ -114,7 +114,7 @@ out_of_sample_training_data_labels = class_labels(in_sample_points+1:end,:);
 % should be run to convergence.  Convergence of MCMC methods is very
 % difficult to assess automatically -- visually checking that the
 % model_scores have stabilized is the practical way to do it
-num_sweeps = 100;
+num_sweeps = 10;
 trace_plot_number = 3;
 progress_plot_number = 4;
 alpha_0 = 1; 
@@ -157,10 +157,10 @@ legend(lh,'True # neurons')
 % filter suffers from one drawback, namely, alpha is instead
 % treated as a parameter instead of a random variable.  This is a difficult 
 % technical issue.
-num_particles = num_sweeps-burned_in_index+1;
+num_particles = 5%num_sweeps-burned_in_index+1
 [spike_sortings, spike_sorting_weights, number_of_neurons_in_each_sorting] = particle_filter(reduced_dimensionality_waveforms', ...
     num_particles, a_0, b_0, mu_0, k_0, v_0, ...
-    lambda_0,mean(alpha_record), class_id_samples);
+    lambda_0,1);%mean(alpha_record), class_id_samples);
 
 % You're done!  Now all of the data has been integrated into the model as we now have 
 % (weighted) set of sampled spike sortings.  Now comes the hard part.  One

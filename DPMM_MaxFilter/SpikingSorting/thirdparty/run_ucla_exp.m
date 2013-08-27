@@ -82,7 +82,7 @@ lambda_0 = eye(spike_dimensions_to_retain)*1;%3%1.5;
 
 v_0 = spike_dimensions_to_retain+1;%5
 a_0 =1;
-b_0 =1;
+b_0 =0.01;
 [samples labels means covariances] = sample_igmm_prior(number_of_spikes,a_0,b_0,mu_0,lambda_0,k_0,v_0);
 % 
 % figure(2) 
@@ -156,7 +156,7 @@ end
 % filter suffers from one drawback, namely, alpha is instead
 % treated as a parameter instead of a random variable.  This is a difficult 
 % technical issue.
-num_particles = 5;%num_sweeps-burned_in_index+1;
+num_particles = 10;%num_sweeps-burned_in_index+1;
 [spike_sortings, spike_sorting_weights, number_of_neurons_in_each_sorting, PF_means, PF_sum_squares, PF_inv_cov, PF_log_det_cov, PF_counts] = particle_filter(in_sample_training_data', ...
     num_particles, a_0, b_0, mu_0, k_0, v_0, ...
     lambda_0,1);
@@ -251,7 +251,7 @@ if 1==1
 
     for index=1:size(spike_sortings,1)
 
-        index = map_spike_sorting_index;
+        %index = map_spike_sorting_index;
 
         heldout_loglikelihood = 0;
         K = number_of_neurons_in_each_sorting(index);%MAP_number_of_neurons;
@@ -273,8 +273,10 @@ if 1==1
         heldout_loglikelihood
         disp('------------');
         %lp_mvniw(map_spike_sorting(:,1001:8195),inspk(1001:9195,:)', mu_0, k_0,3,lambda_0)
+        
+        figure(index+10);
+        scatter(in_sample_training_data(:,1),in_sample_training_data(:,2),[],spike_sortings(index, :),'.'); hold all;
 
-        return
     end
     
 end

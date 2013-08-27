@@ -26,17 +26,16 @@ for i=1:length(sorted_indx_array)
     hash(int2str(pid))=tmp;
 end
 
-
-for ii=1:length(hash)
-    tmp = hash(int2str(ii));
-    offset=ii;
-    if ii > 1 && offset <= length(tmp)
-        offset=ii-1;
-        tmp=tmp([offset+1:end 1:offset]); %left shift by offset    
-    end
-    hash(int2str(ii))=tmp;
-end
+for i=1:N
+   tmp = hash(int2str(i));
+   
+       offset = i-1;
+       if length(tmp) == offset
+           offset = 0;
+       end
+       tmp=tmp([offset+1:end 1:offset]); %left shift by offset   
     
+
 for i=1:N
    tmp = hash(int2str(i));
    if isempty(tmp) == 0

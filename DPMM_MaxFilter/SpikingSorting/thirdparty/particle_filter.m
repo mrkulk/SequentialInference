@@ -148,7 +148,7 @@ for t = index_at_which_to_start_estimation:T
     % M == the number of putative particles to generate
     M = sum_K_plus+N;
     putative_particles = zeros(2,M, 'uint32');
-    putative_weights = ones(1,M);
+    putative_weights = zeros(1,M);
 
 
     % si and ei are the starting and ending indexes of the K_plus(n)+1
@@ -209,73 +209,13 @@ for t = index_at_which_to_start_estimation:T
     c = find_optimal_c(putative_weights,N);
 
     % find pass-through ratio
-    pass_inds = putative_weights>1/c;
+    pass_inds = putative_weights>2;%1/c;
     num_pass = sum(pass_inds);
     
-    
-%     if cp == 1
-%        np = 2;
-%     else
-%        np = 1;
-%     end
-    np = 1;
-    
+
+    np = 1;    
     yyT = y*y';
 
-
-
-    if num_pass >0
-        particles(1:num_pass,1:t-1,np) = particles(putative_particles(1,pass_inds),1:t-1,cp);
-
-        particles(1:num_pass,t,np) = putative_particles(2,pass_inds);
-
-        weights(1:num_pass,np) = putative_weights(pass_inds);
-
-
-        passing_class_id_ys = putative_particles(2,pass_inds);
-        passing_orig_partical_ids = putative_particles(1,pass_inds);
-        for npind = 1:num_pass
-            class_id_y = passing_class_id_ys(npind);
-            originating_particle_id = passing_orig_partical_ids(npind);
-            originating_particle_K_plus = K_plus(originating_particle_id,cp);
-
-            new_count = counts(class_id_y,originating_particle_id,cp)+1;
-
-
-            if new_count == 1
-                K_plus(npind,np) = originating_particle_K_plus+1;
-
-            else
-                K_plus(npind,np) = originating_particle_K_plus;
-
-            end
-
-            counts(1:max_K_plus,npind,np) = counts(1:max_K_plus,originating_particle_id,cp);
-            counts(class_id_y,npind,np) = new_count;
-
-            old_mean = means(:,class_id_y,originating_particle_id,cp);
-            means(:,1:max_K_plus,npind,np) = means(:,1:max_K_plus,originating_particle_id,cp); %check this one too
-            means(:,class_id_y,npind,np) =  old_mean + (1/double(new_count)) * (y - old_mean);
-            sum_squares(:,:,1:max_K_plus,npind,np) = sum_squares(:,:,1:max_K_plus,originating_particle_id,cp); % check this line
-            sum_squares(:,:,class_id_y,npind,np) = sum_squares(:,:,class_id_y,originating_particle_id,cp) + yyT;
-
-            % here we use a hidden feature of  lp_tpp_helper  in that
-            % it will calculate the log_det_cov and the inv_cov for us
-            % automatically.  we don't care about lp here at all
-            [lp ldc ic] = lp_tpp_helper(pc_max_ind,pc_gammaln_by_2,pc_log_pi,pc_log,y,double(new_count),means(:,class_id_y,npind,np),sum_squares(:,:,class_id_y,npind,np),k_0,mu_0,v_0,lambda_0);
-
-
-            log_det_cov(1:max_K_plus,npind,np) = log_det_cov(1:max_K_plus,originating_particle_id,cp);
-
-            log_det_cov(class_id_y,npind,np) = ldc;
-
-            inv_cov(:,:,1:max_K_plus,npind,np) = inv_cov(:,:,1:max_K_plus,originating_particle_id,cp); % and this one
-
-            inv_cov(:,:,class_id_y,npind,np) = ic;
-
-        end
-
-    end
 
     if N-num_pass > 0
         weights(num_pass+1:end,np) = 1/c;
@@ -292,10 +232,13 @@ for t = index_at_which_to_start_estimation:T
             print 'ERROR'
             return
         end
-            
+        
+        %'#####################'
+        
         npind = num_pass +1;
         for ppind = 1:N-num_pass
             class_id_y = picked_putative_particles(2,ppind);
+            %disp(class_id_y);
             originating_particle_id = picked_putative_particles(1,ppind);
             originating_particle_K_plus = K_plus(originating_particle_id,cp);
             %             particles(npind,1:t,np) = [reshape(particles(originating_particle_id,1:t-1,cp),1,t-1) class_id_y];
@@ -328,9 +271,12 @@ for t = index_at_which_to_start_estimation:T
             npind = npind +1;
         end
 
-
     end
-
+    
+    if t ==12
+        'wait'
+    end
+    
     cp = np;
     time_1_obs = toc;
 end
