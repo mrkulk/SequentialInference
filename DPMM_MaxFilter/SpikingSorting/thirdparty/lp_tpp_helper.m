@@ -49,6 +49,7 @@ if n~=0
     v_n = v_0+n;
 
     S = (SS - n*m_Y*m_Y');
+
     zm_Y = m_Y-mu_0;
     lambda_n = lambda_0 + S  + ...
         k_0*n/(k_0+n)*(zm_Y)*(zm_Y)';

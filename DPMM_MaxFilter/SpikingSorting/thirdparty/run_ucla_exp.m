@@ -75,14 +75,13 @@ in_sample_points = size(in_sample_training_data, 1);
 %% 
 mu_0 = zeros(spike_dimensions_to_retain,1);
 k_0 = 0.01;%0.01%.05;
-lambda_0 = eye(spike_dimensions_to_retain)*1;%3%1.5;
-%lambda_0(1,1)=0.01;
-%lambda_0(2,2)=0.01;
+lambda_0 = eye(spike_dimensions_to_retain)*1;%1 works  %3%1.5;
 
 
-v_0 = spike_dimensions_to_retain+1;%5
+
+v_0 = spike_dimensions_to_retain+5;%5 works
 a_0 =1;
-b_0 =0.01;
+b_0 =1;
 [samples labels means covariances] = sample_igmm_prior(number_of_spikes,a_0,b_0,mu_0,lambda_0,k_0,v_0);
 % 
 % figure(2) 
@@ -156,7 +155,7 @@ end
 % filter suffers from one drawback, namely, alpha is instead
 % treated as a parameter instead of a random variable.  This is a difficult 
 % technical issue.
-num_particles = 10;%num_sweeps-burned_in_index+1;
+num_particles = 1;%num_sweeps-burned_in_index+1;
 [spike_sortings, spike_sorting_weights, number_of_neurons_in_each_sorting, PF_means, PF_sum_squares, PF_inv_cov, PF_log_det_cov, PF_counts] = particle_filter(in_sample_training_data', ...
     num_particles, a_0, b_0, mu_0, k_0, v_0, ...
     lambda_0,1);
@@ -182,7 +181,7 @@ num_particles = 10;%num_sweeps-burned_in_index+1;
 map_spike_sorting_index = find(spike_sorting_weights == max(spike_sorting_weights),1);
 map_spike_sorting = spike_sortings(map_spike_sorting_index,:);
 figure(6)
-scatter(in_sample_training_data(:,1),in_sample_training_data(:,2),[],map_spike_sorting,'.');
+scatter(in_sample_training_data(:,1),in_sample_training_data(:,2),50,map_spike_sorting,'.');
 
 
 % % figure(7);
@@ -206,79 +205,3 @@ MAP_number_of_neurons = number_of_neurons_in_each_sorting(map_spike_sorting_inde
 disp(['Expected number of neurons (' num2str(E_number_of_neurons) ') vs. MAP number of neurons (' num2str(MAP_number_of_neurons) ')'])
 
 
-% Plotting 
-if 1==0
-    %colors = ['r' 'b' 'm' 'g' 'y' 'm' 'y' 'b' 'r' 'g' 'k' 'm' 'y' 'b'];
-    colors={};
-    DIV=size(unique(map_spike_sorting),2);
-    elm = [1:255/DIV:255];
-    elm=elm/255;
-
-    colors{1}=[0.8 0 0]; colors{2} = [0 0.8 0]; colors{3} = [0 0 0.8]; colors{4} = [0.8 0.8 0.2];
-    colors{5} = [0.2 0.4 0.3]; colors{6} = [1 1 1];
-
-    for i=1:DIV
-        colors{i} = colors{i};
-    end
-
-    figure(8)
-    for i=1:size(map_spike_sorting,2)
-       plot(spikes(i,:),'Color', colors{map_spike_sorting(i)});hold all; 
-    end
-
-
-    %selective plot
-    for ii=0:length(unique(map_spike_sorting))
-        figure(9+ii)
-        for i=1:size(map_spike_sorting,2)
-            if map_spike_sorting(i) == ii
-                plot(spikes(i,:),'Color', colors{map_spike_sorting(i)});hold all; 
-            end
-        end
-    end
-end
-
-%% Calculate Held out likelihood
-if 1==1
-    pc_max_ind = 1e5;
-    pc_gammaln_by_2 = 1:pc_max_ind;
-    pc_gammaln_by_2 = gammaln(pc_gammaln_by_2/2);
-    pc_log_pi = reallog(pi);
-    pc_log = reallog(1:pc_max_ind);
-
-    inv_Sigma = PF_inv_cov;
-    log_det_Sigma = PF_log_det_cov;
-
-    for index=1:size(spike_sortings,1)
-
-        %index = map_spike_sorting_index;
-
-        heldout_loglikelihood = 0;
-        K = number_of_neurons_in_each_sorting(index);%MAP_number_of_neurons;
-        for i=1:size(out_of_sample_training_data, 1)
-            y = out_of_sample_training_data(i,:)';
-            for kid=1:K %Integrating cluster assigments
-                n = length(find(spike_sortings(index,:) ==kid ));%length(find(map_spike_sorting==kid)); 
-
-                m_Y = PF_means(:,kid, index,1);%map_spike_sorting_index,1);
-                SS=PF_sum_squares(:,:,kid,index,1);%map_spike_sorting_index,1);
-                ldetS = log_det_Sigma(kid,index,1);
-                invS = inv_Sigma(:,:,kid,index,1);
-
-                [lp ldc ic] = lp_tpp_helper(pc_max_ind,pc_gammaln_by_2,pc_log_pi,pc_log,y,n,m_Y,SS,k_0,mu_0,v_0,lambda_0, ldetS, invS);
-                heldout_loglikelihood = heldout_loglikelihood + lp;
-            end
-        end
-        index
-        heldout_loglikelihood
-        disp('------------');
-        %lp_mvniw(map_spike_sorting(:,1001:8195),inspk(1001:9195,:)', mu_0, k_0,3,lambda_0)
-        
-        figure(index+10);
-        scatter(in_sample_training_data(:,1),in_sample_training_data(:,2),[],spike_sortings(index, :),'.'); hold all;
-
-    end
-    
-end
-
-    

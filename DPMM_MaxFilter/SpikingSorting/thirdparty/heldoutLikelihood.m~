@@ -1,0 +1,60 @@
+
+%% Calculate Held out likelihood
+
+pc_max_ind = 1e5;
+pc_gammaln_by_2 = 1:pc_max_ind;
+pc_gammaln_by_2 = gammaln(pc_gammaln_by_2/2);
+pc_log_pi = reallog(pi);
+pc_log = reallog(1:pc_max_ind);
+
+inv_Sigma = PF_inv_cov;
+log_det_Sigma = PF_log_det_cov;
+
+flag = 1;
+for index=1:size(spike_sortings,1)
+
+    %index = map_spike_sorting_index;
+    
+    % flag ==1
+    %    spike_sortings(index,:) = ones(1,4598);
+    %end
+    %flag = flag + 1;
+    
+    
+    K = number_of_neurons_in_each_sorting(index);%MAP_number_of_neurons;
+
+    heldout_loglikelihood = 0;
+    for i=1:size(out_of_sample_training_data, 1)
+        y = out_of_sample_training_data(i,:)';
+        for kid=1:K
+            hits = find(spike_sortings(index,:) ==kid );
+            n = length(hits);
+            data = in_sample_training_data(hits,:);
+            d = size(data,2);
+            m_Y = mean(data);
+            
+            mean_y_vec = ones(size(data));
+            mean_y_vec(:,1) = mean_y_vec(:,1).*m_Y(:,1);
+            mean_y_vec(:,2) = mean_y_vec(:,2).*m_Y(:,2);
+
+            tmp = data - mean_y_vec;
+            SS = zeros(d,d);
+            for i=1:size(data,1)
+                SS = SS + ( *transpose(tmp(i,:)));
+            end
+
+            [lp ldc ic] = lp_tpp_helper(pc_max_ind,pc_gammaln_by_2,pc_log_pi,pc_log,y,n,m_Y',SS,k_0,mu_0,v_0,lambda_0);            
+            heldout_loglikelihood = heldout_loglikelihood + lp;           
+        end
+    end
+
+    heldout_loglikelihood
+    disp('------------');
+    %lp_mvniw(map_spike_sorting(:,1001:8195),inspk(1001:9195,:)', mu_0, k_0,3,lambda_0)
+
+    figure(index+10);
+    scatter(in_sample_training_data(:,1),in_sample_training_data(:,2),50,spike_sortings(index, :),'.'); hold all;
+
+end
+
+    
