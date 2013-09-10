@@ -52,7 +52,7 @@ function emission(currentState, emission_mat)
 end
 
 function initialize(init_matrix)
-	sample_arr = rand(Multinomial(1, initial_matrix))
+	sample_arr = rand(Multinomial(1, init_matrix))
 	nxtState = findin(sample_arr, 1)[1]
 	return nxtState
 end
@@ -167,8 +167,6 @@ end
 
 
 
-
-
 function resampleParticles(particlesDict)
 	newIndices = zeros(NUM_PARTICLES_SAMP)
 	tempWeightVect = normalizeWeight(particlesDict)
@@ -186,6 +184,46 @@ function resampleParticles(particlesDict)
 end
 
 
+
+
+
+function compForwardBackwardProbs(transition_matrix, emission_matrix, init_state, obs_seq)
+	obs_len = length(obs_seq)
+	num_states = size(transition_matrix)[1]
+	alpha_mat = zeros(obs_len, num_states)
+	beta_mat = zeros(obs_len, num_states)
+	scaled_alpha_mat = zeros(obs_len, num_states)
+	c_vect = zeros(length(obs_seq))
+	alpha_mat[1, :] = transition_matrix[init_state, :] .* emission_matrix[:, obs_seq[1]]'
+	beta_mat[obs_len, :] = 1
+	c_vect[1] = sum(alpha_mat[1, :])
+	scaled_alpha_mat[1, :] = alpha_mat[1, :] ./ c_vect[1]
+
+
+	for i = 2:obs_len
+		for j = 1 : num_states
+			alpha_mat[i, j] = 0
+			temp_sum = 0
+			for k = 1: num_states
+				temp_sum += alpha_mat[i - 1, k] * transition_matrix[k, j]
+			end 
+			alpha_mat[i, j] = temp_sum * emission_matrix[j, obs_seq[i]]
+		end
+	end
+	marginal = sum(alpha_mat[obs_len, :])
+
+	for ii = 2:obs_len
+		for kk = 1 : num_states
+			beta_mat[obs_len - ii] = 0
+			temp_sum = 0
+			
+		end
+	end
+
+
+
+
+end
 
 function samplePath(obsSeq, transition_mat, emission_mat, init_matrix, resample)
 	log_weight_vect = zeros(length(obsSeq))
@@ -217,46 +255,47 @@ function samplePath(obsSeq, transition_mat, emission_mat, init_matrix, resample)
 end
 
 
-
-
-
-
-function approxMarginalLikelihood(obsSeq, transition_mat, emission_mat, init_state)
-	log_weight_vect = zeros(length(obsSeq))
-	LENGTH_SEQ = length(obsSeq)
-	particles = Dict()
-	for i = 1:NUM_PARTICLES_SAMP
-		particles[i] = Dict()
-	end
-
-	for k = 1:NUM_PARTICLES_SAMP
-		
-			initPartilce(particles[k], obsSeq, emission_mat, init_state, transition_mat)
-	end
-	
-	temp_avg_weight = resampleParticles(particles)
-	
-	log_weight_vect[1] = temp_avg_weight
-
-	for l = 2:LENGTH_SEQ
-		for k = 1:NUM_PARTICLES_SAMP
-				extendParticle(particles[k], obsSeq, emission_mat, transition_mat)
-		end	
-		log_weight_vect[l] = resampleParticles(particles)
-
-	end
-	log_marginal_likelihood = sum(log(log_weight_vect))
-	marginal_likelihood = exp(log_marginal_likelihood)
-	finalWeightVect = normalizeWeight(particles)
-	return (log_marginal_likelihood)
-end
-	
-
-
-
-samplePath(obs_seq, transition_matrix, emission_matrix, init_matrix, true)
-
+temp = samplePath(obs_seq, transition_matrix, emission_matrix, init_matrix, true)
+println(temp)
 end #debug 
+
+
+
+
+
+##################################################################
+
+
+
+# function approxMarginalLikelihood(obsSeq, transition_mat, emission_mat, init_state)
+# 	log_weight_vect = zeros(length(obsSeq))
+# 	LENGTH_SEQ = length(obsSeq)
+# 	particles = Dict()
+# 	for i = 1:NUM_PARTICLES_SAMP
+# 		particles[i] = Dict()
+# 	end
+
+# 	for k = 1:NUM_PARTICLES_SAMP
+		
+# 			initPartilce(particles[k], obsSeq, emission_mat, init_state, transition_mat)
+# 	end
+	
+# 	temp_avg_weight = resampleParticles(particles)
+	
+# 	log_weight_vect[1] = temp_avg_weight
+
+# 	for l = 2:LENGTH_SEQ
+# 		for k = 1:NUM_PARTICLES_SAMP
+# 				extendParticle(particles[k], obsSeq, emission_mat, transition_mat)
+# 		end	
+# 		log_weight_vect[l] = resampleParticles(particles)
+
+# 	end
+# 	log_marginal_likelihood = sum(log(log_weight_vect))
+# 	marginal_likelihood = exp(log_marginal_likelihood)
+# 	finalWeightVect = normalizeWeight(particles)
+# 	return (log_marginal_likelihood)
+# end
 
 
 
