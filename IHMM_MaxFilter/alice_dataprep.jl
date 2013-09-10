@@ -55,7 +55,11 @@ function get_AW_dataset(seed, _start, _end)
 
 	tindx=1
 	test_dict = Dict()
+<<<<<<< HEAD
 	for i=_start:_end#length(data)
+=======
+	for i=1:LENGTH_SEQ#length(data)
+>>>>>>> 129634c0c2fd332d6c98b1fa729b28950bc33b33
 		if 	data[i] != "!" && data[i] != "'" && data[i] != "—" && data[i] != "?" &&
 			data[i] != "-" && data[i] != "." && data[i] != " " && data[i] != "\n" && 
 			data[i] != "," && data[i] != ")" && data[i] != "(" && data[i] != ":" && data[i] != ";"      
@@ -84,4 +88,8 @@ function get_AW_dataset(seed, _start, _end)
 end
 
 
+<<<<<<< HEAD
 get_AW_dataset(0, 1, 2000)
+=======
+get_AW_dataset(0)
+>>>>>>> 129634c0c2fd332d6c98b1fa729b28950bc33b33
