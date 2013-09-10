@@ -9,6 +9,7 @@ ALICE_DATASET_MODE = true
 
 if ALICE_DATASET_MODE == true
 	require("alice_dataprep.jl")
+	require("HMMSMC.jl")
 	type sequence
 		suff_stats # a dict from "low" and "top" to the suff stats for these levels
 		seq_history
@@ -25,14 +26,14 @@ end
 # 	current_state
 # end
 @debug begin
-#srand(1)
+srand(1)
 ###################PARAMETERS#####################
 
 
 TOP_ALPHA = 1
 LOW_ALPHA = 1
 OBS_ALPHA = 0.3
-NUM_PARTICLES = 10
+NUM_PARTICLES = 40
 NUM_OBS = NaN
 
 obs_sequence = Dict()
@@ -84,6 +85,28 @@ end
 
 
 
+
+#use this to generate the transition and emission matrices based on a sampled sequence 
+function calcTransitionEmissionMat(sampled_seq, obs_seq)
+	num_states = int32(max(sampled_seq))
+	#@bp
+	#println(NUM_OBS)
+	transition_mat = zeros(num_states, num_states)
+	emission_mat = zeros(num_states, NUM_OBS)
+	last_obs_time = length(sampled_seq)
+	for i = 1:last_obs_time - 1
+		state_t = sampled_seq[i]
+		state_t_1 = sampled_seq[i + 1]  
+		transition_mat[state_t, state_t_1] += 1
+		emission_mat[state_t, obs_seq[i]] += 1
+	end
+	emission_mat[sampled_seq[last_obs_time], obs_seq[last_obs_time]] += 1
+	transition_mat = transition_mat ./ sum(transition_mat, 2)
+	emission_mat = emission_mat ./ sum(emission_mat, 2)
+	return transition_mat, emission_mat
+end
+
+
 #################GENERATIVE MODEL#################
 
 
@@ -112,6 +135,7 @@ function createCRFProbVect(current_sequence, obs)
 	top_temp_denom = TOP_ALPHA + total_num_top_transition
 	for i = (total_num_states + 1): (total_num_states * 2)
 		prob_vect[i] = (LOW_ALPHA / low_temp_denom) * dict_of_state_creation[i - total_num_states] / top_temp_denom
+		#println(obs)
 		prob_vect[i] *= ((dict_of_obs_suffstat[i - total_num_states][obs] + OBS_ALPHA) / (denom_obs_part1 + sum(values(dict_of_obs_suffstat[i - total_num_states]))) )
 	end
 
@@ -179,8 +203,11 @@ end
 
 ###################RUNNER ##########################
 
-
-
+trans_mat, emit_mat = 0, 0
+obs_seq = obs_sequence
+last_state = -1
+test_size = 100
+train_size = 1000
 function main(seed)
 		#function body
 	if ALICE_DATASET_MODE == false
@@ -188,7 +215,7 @@ function main(seed)
 	end
 
 	if ALICE_DATASET_MODE == true
-		data_dict, NUM_OBS = get_AW_dataset(seed)
+		data_dict, NUM_OBS = get_AW_dataset(seed, 1, train_size)
 	end
 
 	seq_true = data_dict["hid"]
@@ -225,6 +252,7 @@ function main(seed)
 
 	weight_vect = zeros(NUM_PARTICLES)
 	for t = 1:SEQUENCE_LENGTH
+		println("ttttttttt", t)
 		weight_vect = zeros(NUM_PARTICLES)
 		# if t == 3
 		# 	@bp
@@ -236,6 +264,7 @@ function main(seed)
 			prob_vect = createCRFProbVect(particle_dict[p_num], obs_sequence[t])
 			prob_vect_concated = vcat(prob_vect_concated, prob_vect)
 			prob_vect_encoded = changeProbIndexes(prob_vect)
+			#println(length(prob_vect))
 			for ll = 1:length(prob_vect)
 				state_particle_pair_list = vcat(state_particle_pair_list, (prob_vect_encoded[ll], p_num, ll) )
 			end
@@ -266,6 +295,7 @@ function main(seed)
 				weight_vect[lll] = prob_of_index
 			end
 
+
 		end
 		
 		if num_of_uniques_added < NUM_PARTICLES
@@ -282,14 +312,23 @@ function main(seed)
 			end
 		end
 		particle_dict = deepcopy(particle_dict_temp)
-		print(particle_dict[1].seq_history[t], " ")
+
+		# print(particle_dict[1].seq_history[t], " ")
+		# print(t)
+		# println()
 		# println()
 	end
 
 
 	normalized_weight_vect = weight_vect / sum(weight_vect)
-	println(normalized_weight_vect)
+	
+	sampled_seq = particle_dict[1].seq_history
+	obs_seq = obs_sequence
 
+	trans_mat, emit_mat = calcTransitionEmissionMat(sampled_seq, obs_seq)
+	last_index = length(particle_dict[1].seq_history)
+	last_state = particle_dict[1].seq_history[last_index]
+	#println(particle_dict[1].seq_history)
 	# total_error = 0
 	# for h = 1:NUM_SAMPLES
 	# 	sample_arr = rand(Multinomial(1, normalized_weight_vect))
@@ -303,8 +342,24 @@ function main(seed)
 	# println("maxfilter error: ", error)
 	# return {"max_filter_error" => max_filter_error, "SMC_error" => smc_error}
 end
+seed = 0
+main(seed)
+# NUM_OBS = 4
+# sampled_seq = [1,2,1,4,2,3,4,3]
+# obs_seq = [1,1,2,2,3,3,4,4]
+# trans_mat, emit_mat = calcTransitionEmissionMat(sampled_seq, obs_seq)
+#println(trans_mat)
+#println(emit_mat)
 
-main(0)
+obs_seq = get_AW_dataset(seed, train_size + 1, test_size + train_size)
+println(obs_seq)
+
+obs_seq = obs_seq[1]["obs"]
+temp1 = compExactMarginal(trans_mat,emit_mat, last_state, obs_seq, true)
+ println(temp1)
+# temp = approxMarginalLikelihood(obs_seq, trans_mat, emit_mat, 2)
+# println(log(temp1))
+# println(log(temp))
 
 end
 
