@@ -5,11 +5,15 @@ using Distributions
 using Debug
 using PyCall
 
+ALICE_DATASET_MODE = true
 
 if ALICE_DATASET_MODE == false
 	require("ComputeInferenceError.jl")
+
 end
+require("alice_dataprep.jl")
 require("GenerateData.jl")
+require("HMMSMC.jl")
 
 
 type sequence
@@ -57,13 +61,30 @@ obs_sequence = Dict()
 # for j = 1:SEQUENCE_LENGTH
 # 	obs_sequence[j] = obs[j]
 # end
-NUM_OBS = 4
+NUM_OBS = NaN
 
 ###################HELPER FUNCTIONS###############
 
 
 
-
+function calcTransitionEmissionMat(sampled_seq, obs_seq)
+	num_states = int32(max(sampled_seq))
+	#@bp
+	#println(NUM_OBS)
+	transition_mat = zeros(num_states, num_states)
+	emission_mat = zeros(num_states, NUM_OBS)
+	last_obs_time = length(sampled_seq)
+	for i = 1:last_obs_time - 1
+		state_t = sampled_seq[i]
+		state_t_1 = sampled_seq[i + 1]  
+		transition_mat[state_t, state_t_1] += 1
+		emission_mat[state_t, obs_seq[i]] += 1
+	end
+	emission_mat[sampled_seq[last_obs_time], obs_seq[last_obs_time]] += 1
+	transition_mat = transition_mat ./ sum(transition_mat, 2)
+	emission_mat = emission_mat ./ sum(emission_mat, 2)
+	return transition_mat, emission_mat
+end
 
 
 #################GENERATIVE MODEL#################
@@ -167,11 +188,16 @@ end
 
 ###################RUNNER ##########################
 
-
-
+test_size = 100
+train_size = 1000
+trans_mat, emit_mat = 0, 0
+last_state = -1
 function mainSMC(seed)
 	#function body
-data_dict = main_generate(seed)
+#data_dict = main_generate(seed)
+
+data_dict , NUM_OBS = get_AW_dataset(seed, 1, train_size)
+
 seq_true = data_dict["hid"]
 obs = data_dict["obs"]
 
@@ -210,6 +236,7 @@ end
 
 
 for t = 1:SEQUENCE_LENGTH
+	println("t ", t)
 	particle_dict_temp = Dict()
 	for p_num = 1:NUM_PARTICLES
 		prob_vect = createCRFProbVect(particle_dict[p_num], obs_sequence[t])
@@ -239,18 +266,35 @@ end
 
 normalized_weight_vect = weight_vect / sum(weight_vect)
 
-total_error = 0
-for h = 1:NUM_SAMPLES
-	sample_arr = rand(Multinomial(1, normalized_weight_vect))
-	idx = findin(sample_arr, 1)[1]
-	seq_inferred = particle_dict[idx].seq_history
-	total_error += computeError(seq_inferred, seq_true)
-end
-error = total_error / NUM_SAMPLES
-SMC_error = error
-println("SMC error: ", error)
-return SMC_error
+sampled_seq = particle_dict[1].seq_history
+obs_seq = obs_sequence
+trans_mat, emit_mat = calcTransitionEmissionMat(sampled_seq, obs_seq)
+last_index = length(particle_dict[1].seq_history)
+last_state = particle_dict[1].seq_history[last_index]
+
+
+# total_error = 0
+# for h = 1:NUM_SAMPLES
+# 	sample_arr = rand(Multinomial(1, normalized_weight_vect))
+# 	idx = findin(sample_arr, 1)[1]
+# 	seq_inferred = particle_dict[idx].seq_history
+# 	total_error += computeError(seq_inferred, seq_true)
+# end
+# error = total_error / NUM_SAMPLES
+# SMC_error = error
+# println("SMC error: ", error)
+# return SMC_error
+
 end 
+seed = 0
+mainSMC(seed)
+
+obs_seq = get_AW_dataset(seed, train_size + 1, test_size + train_size)
+println(obs_seq)
+
+obs_seq = obs_seq[1]["obs"]
+temp1 = compExactMarginal(trans_mat,emit_mat, last_state, obs_seq, true)
+println(temp1)
 
 end
 
