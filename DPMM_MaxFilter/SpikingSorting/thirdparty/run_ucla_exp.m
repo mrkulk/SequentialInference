@@ -155,7 +155,7 @@ end
 % filter suffers from one drawback, namely, alpha is instead
 % treated as a parameter instead of a random variable.  This is a difficult 
 % technical issue.
-num_particles = 1;%num_sweeps-burned_in_index+1;
+num_particles = 100;%num_sweeps-burned_in_index+1;
 [spike_sortings, spike_sorting_weights, number_of_neurons_in_each_sorting, PF_means, PF_sum_squares, PF_inv_cov, PF_log_det_cov, PF_counts] = particle_filter(in_sample_training_data', ...
     num_particles, a_0, b_0, mu_0, k_0, v_0, ...
     lambda_0,1);

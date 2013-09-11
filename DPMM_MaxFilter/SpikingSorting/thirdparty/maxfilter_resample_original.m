@@ -57,5 +57,3 @@ end
 
 
 rw = rw./sum(rw);
-
-rw

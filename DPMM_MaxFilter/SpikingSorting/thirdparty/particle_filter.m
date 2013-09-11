@@ -14,7 +14,7 @@ function [ret_particles, ret_weights, ret_K_plus, means, sum_squares, inv_cov, l
 % data is processed one observation at a time and the particle set is
 % also returned having observed each observation
 
-RESAMPLE_SCHEME = 'MAXFILTER';
+RESAMPLE_SCHEME = 'MAXFILTER_BASIC';
 pc_max_ind = 1e5;
 pc_gammaln_by_2 = 1:pc_max_ind;
 pc_gammaln_by_2 = gammaln(pc_gammaln_by_2/2);
@@ -227,7 +227,7 @@ for t = index_at_which_to_start_estimation:T
         elseif strcmp(RESAMPLE_SCHEME , 'MAXFILTER')
             picked_putative_particles = maxfilter_resample(putative_particles(:,~pass_inds),putative_weights(~pass_inds),N-num_pass);
         elseif strcmp(RESAMPLE_SCHEME , 'MAXFILTER_BASIC')
-            picked_putative_particles = maxfilter_resample_nonunique(putative_particles(:,~pass_inds),putative_weights(~pass_inds),N-num_pass);
+            picked_putative_particles = maxfilter_resample_original(putative_particles(:,~pass_inds),putative_weights(~pass_inds),N-num_pass);
         else
             print 'ERROR'
             return

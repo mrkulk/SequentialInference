@@ -110,36 +110,36 @@ in_sample_training_data_labels = class_labels(1:in_sample_points,:);
 out_of_sample_training_data = reduced_dimensionality_waveforms(in_sample_points+1:end,:);
 out_of_sample_training_data_labels = class_labels(in_sample_points+1:end,:);
 
-% num_sweeps is the number of steps in the Gibbs sampler.  The sampler
-% should be run to convergence.  Convergence of MCMC methods is very
-% difficult to assess automatically -- visually checking that the
-% model_scores have stabilized is the practical way to do it
-num_sweeps = 10;
-trace_plot_number = 3;
-progress_plot_number = 4;
-alpha_0 = 1; 
-[class_id_samples, num_classes_per_sample, model_scores, alpha_record] = collapsed_gibbs_sampler(...
-    in_sample_training_data', num_sweeps, a_0, b_0, mu_0, k_0, v_0, ...
-    lambda_0, alpha_0, trace_plot_number, progress_plot_number);
-
-% "samples" from before the sampler has burned in are _not_ samples, they
-% are _garbage_.  Samples from the burn-in period _must_ be thrown away
-burned_in_index = 51;
-class_id_samples = class_id_samples(:,burned_in_index:end);
-num_classes_per_sample = num_classes_per_sample(burned_in_index:end);
-model_scores = model_scores(burned_in_index:end);
-alpha_record = alpha_record(burned_in_index:end);
-
-% at this point, if we want, we can run some diagnostics to see whether or
-% not the model is doing what we want it to do, for instance, we can check
-% out the estimated marginal distribution over the number of neurons
-figure(5)
-histogram = histc(num_classes_per_sample,1:21-.5);
-bar(1:20,histogram);
-lh = line([4 4],[0 max(histogram)+1]);
-set(lh,'Color',[0 1 0],'LineWidth',2);
-title('Estimated distribution over number of neurons')
-legend(lh,'True # neurons')
+% % % % num_sweeps is the number of steps in the Gibbs sampler.  The sampler
+% % % % should be run to convergence.  Convergence of MCMC methods is very
+% % % % difficult to assess automatically -- visually checking that the
+% % % % model_scores have stabilized is the practical way to do it
+% % % num_sweeps = 10;
+% % % trace_plot_number = 3;
+% % % progress_plot_number = 4;
+% % % alpha_0 = 1; 
+% % % [class_id_samples, num_classes_per_sample, model_scores, alpha_record] = collapsed_gibbs_sampler(...
+% % %     in_sample_training_data', num_sweeps, a_0, b_0, mu_0, k_0, v_0, ...
+% % %     lambda_0, alpha_0, trace_plot_number, progress_plot_number);
+% % % 
+% % % % "samples" from before the sampler has burned in are _not_ samples, they
+% % % % are _garbage_.  Samples from the burn-in period _must_ be thrown away
+% % % burned_in_index = 51;
+% % % class_id_samples = class_id_samples(:,burned_in_index:end);
+% % % num_classes_per_sample = num_classes_per_sample(burned_in_index:end);
+% % % model_scores = model_scores(burned_in_index:end);
+% % % alpha_record = alpha_record(burned_in_index:end);
+% % % 
+% % % % at this point, if we want, we can run some diagnostics to see whether or
+% % % % not the model is doing what we want it to do, for instance, we can check
+% % % % out the estimated marginal distribution over the number of neurons
+% % % figure(5)
+% % % histogram = histc(num_classes_per_sample,1:21-.5);
+% % % bar(1:20,histogram);
+% % % lh = line([4 4],[0 max(histogram)+1]);
+% % % set(lh,'Color',[0 1 0],'LineWidth',2);
+% % % title('Estimated distribution over number of neurons')
+% % % legend(lh,'True # neurons')
 
 % realize that class_id_samples is a collection of equally weighted spike
 % sortings. The model_scores are proportional to the log probability of the
@@ -157,8 +157,8 @@ legend(lh,'True # neurons')
 % filter suffers from one drawback, namely, alpha is instead
 % treated as a parameter instead of a random variable.  This is a difficult 
 % technical issue.
-num_particles = 5%num_sweeps-burned_in_index+1
-[spike_sortings, spike_sorting_weights, number_of_neurons_in_each_sorting] = particle_filter(reduced_dimensionality_waveforms', ...
+num_particles = 1;%num_sweeps-burned_in_index+1
+[spike_sortings, spike_sorting_weights, number_of_neurons_in_each_sorting] = particle_filter(in_sample_training_data', ...
     num_particles, a_0, b_0, mu_0, k_0, v_0, ...
     lambda_0,1);%mean(alpha_record), class_id_samples);
 
@@ -179,8 +179,9 @@ num_particles = 5%num_sweeps-burned_in_index+1
 map_spike_sorting_index = find(spike_sorting_weights == max(spike_sorting_weights),1);
 map_spike_sorting = spike_sortings(map_spike_sorting_index,:);
 figure(6)
-scatter(reduced_dimensionality_waveforms(:,1),reduced_dimensionality_waveforms(:,2),[],map_spike_sorting);
+scatter(in_sample_training_data(:,1),in_sample_training_data(:,2),50,map_spike_sorting,'.');
 title('MAP Spike sorting')
+
 % if you compare this to figure 1 you will notice that the colors assigned
 % to each class are probably different -- that's because the distribution
 % is invariant to permutations of the labeling (the labeling of which
