@@ -1,6 +1,5 @@
 
 %% Calculate Held out likelihood
-
 pc_max_ind = 1e5;
 pc_gammaln_by_2 = 1:pc_max_ind;
 pc_gammaln_by_2 = gammaln(pc_gammaln_by_2/2);
@@ -13,8 +12,8 @@ pc_log = reallog(1:pc_max_ind);
 FLAG = 0;
 
 new_spike_sortings = zeros(size(spike_sortings));
-
-for index=1:size(spike_sortings,1)
+total_heldout_loglikelihood = 0;
+for index=1:10%size(spike_sortings,1)
 
     %index = map_spike_sorting_index;
     
@@ -24,7 +23,7 @@ for index=1:size(spike_sortings,1)
        new_spike_sortings(index,:) = spike_sortings(index,:);
     end
     
-    new_spike_sortings = cluster_class(:,1)';
+    %PLEASE REMOVE new_spike_sortings = cluster_class(:,1)';
 
 
 
@@ -76,13 +75,14 @@ for index=1:size(spike_sortings,1)
         end
     end
 
-    heldout_loglikelihood
     disp('------------');
+    disp(index);
     %lp_mvniw(map_spike_sorting(:,1001:8195),inspk(1001:9195,:)', mu_0, k_0,3,lambda_0)
-
-    figure(index+10);
-    scatter(in_sample_training_data(:,1),in_sample_training_data(:,2),50,new_spike_sortings(index, :),'.'); hold all;
-
+    total_heldout_loglikelihood = total_heldout_loglikelihood + heldout_loglikelihood;
+    disp(heldout_loglikelihood);
+    %figure(index+10);
+    %scatter(in_sample_training_data(:,1),in_sample_training_data(:,2),50,new_spike_sortings(index, :),'.'); hold all;
 end
 
-    
+disp('FINAL: ');
+disp(total_heldout_loglikelihood/10);

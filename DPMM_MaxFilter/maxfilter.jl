@@ -25,6 +25,15 @@ function stratifiedMaxFiltering(time, particles_t, particles_t_minus_1, maxfilte
 	## BAD [buy why?]logperm = sortperm(log_maxfilter_probability_array, Sort.Reverse)
 	#_maxfilter_cid_array = maxfilter_cid_array[logperm]
 	#_maxfilter_particle_struct = maxfilter_particle_struct[logperm]
+
+	# normalized_maxfilter_prob_array = maxfilter_probability_array/sum(maxfilter_probability_array)
+	# prev_normalized_prob_array = Float64[ float(particles_t_minus_1[pid]["weight"]) for pid in [1:NUM_PARTICLES] ]
+	# @bp
+	# maxfilter_probability_array = normalized_maxfilter_prob_array .* prev_normalized_prob_array
+
+	# perm = sortperm(maxfilter_probability_array, Sort.Reverse)
+	
+	maxfilter_probability_array = maxfilter_probability_array/sum(maxfilter_probability_array)
 	perm = sortperm(maxfilter_probability_array, Sort.Reverse)
 
 	#println( sum([i<0 for i in log_maxfilter_probability_array]) - length(log_maxfilter_probability_array))
@@ -36,11 +45,13 @@ function stratifiedMaxFiltering(time, particles_t, particles_t_minus_1, maxfilte
 
 	maxfilter_cid_array = maxfilter_cid_array[perm]
 	maxfilter_particle_struct = maxfilter_particle_struct[perm]
+	maxfilter_probability_array = maxfilter_probability_array[perm]
 
 	state=Dict()
 	state["c"] = maxfilter_cid_array[1]
 	state["c_aggregate"] = myappend(particles_t_minus_1[maxfilter_particle_struct[1]]["hidden_state"]["c_aggregate"], state["c"])
 	particles_t[1]["hidden_state"]=state	
+	particles_t[1]["weight"] = maxfilter_probability_array[1]
 
 	particle_cnt = 2
 	unique_indices = []
@@ -57,6 +68,7 @@ function stratifiedMaxFiltering(time, particles_t, particles_t_minus_1, maxfilte
 				state["c"] = maxfilter_cid_array[i]
 				state["c_aggregate"] = myappend(particles_t_minus_1[maxfilter_particle_struct[i]]["hidden_state"]["c_aggregate"], state["c"])
 				particles_t[particle_cnt]["hidden_state"]=state
+				particles_t[particle_cnt]["weight"] = maxfilter_probability_array[i]
 				particle_cnt+=1
 			end
 		end
@@ -73,6 +85,7 @@ function stratifiedMaxFiltering(time, particles_t, particles_t_minus_1, maxfilte
 			state["c"] = maxfilter_cid_array[indx]
 			state["c_aggregate"] = myappend(particles_t_minus_1[maxfilter_particle_struct[indx]]["hidden_state"]["c_aggregate"], state["c"])
 			particles_t[p]["hidden_state"]=state
+			particles_t[particle_cnt]["weight"] = maxfilter_probability_array[indx]
 		end
 	end
 

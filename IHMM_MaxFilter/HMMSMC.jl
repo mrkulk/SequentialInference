@@ -21,10 +21,24 @@ myappend{T}(v::Vector{T}, x::T) = [v..., x]
 NUM_PARTICLES_SAMP = 10
 
 
-# transition_matrix = [[0.1, 0.2, 0.3, 0.4] [0.25, 0.25, 0.25, 0.25] [0.4, 0.3, 0.2, 0.1] [0.2, 0.2, 0.2, 0.4]]
-# emission_matrix = [[0.2, 0.3, 0.5] [0.25, 0.25, 0.5] [0.5, 0.1, 0.4] [0.2, 0.7, 0.1]]
-# initial_matrix = [0.25, 0.25, 0.25, 0.25]
+transition_matrix = [[0.1, 0.2, 0.3, 0.4] [0.25, 0.25, 0.25, 0.25] [0.4, 0.3, 0.2, 0.1] [0.2, 0.2, 0.2, 0.4]]
+emission_matrix = [[0.2, 0.3, 0.5] [0.25, 0.25, 0.5] [0.5, 0.1, 0.4] [0.2, 0.7, 0.1]]
+initial_matrix = [0.25, 0.25, 0.25, 0.25]
+obs_sequence = Dict()
 
+seq_true = [2.0,2.0,2.0,2.0,2.0,2.0,2.0,3.0,3.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,2.0,2.0,2.0,2.0,2.0,1.0,1.0,2.0,1.0,1.0]
+obs = [2.0,2.0,2.0,2.0,2.0,2.0,2.0,2.0,0.0,1.0,1.0,2.0,0.0,1.0,1.0,2.0,1.0,1.0,1.0,1.0,2.0,0.0,1.0,2.0,2.0,1.0,1.0,2.0,1.0,1.0]
+
+# seq_true = [2.0,2.0,2.0,3.0,3.0,3.0,3.0,3.0,4.0,1.0,1.0,1.0,1.0,1.0,2.0,1.0,1.0,1.0,1.0,1.0,1.0,4.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0]
+# obs = [2.0,2.0,2.0,3.0,3.0,3.0,3.0,3.0,4.0,4.0,1.0,1.0,1.0,1.0,3.0,1.0,1.0,3.0,1.0,2.0,1.0,4.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0]
+
+# seq_true = [1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,2.0,3.0,3.0,3.0,3.0,3.0,3.0,3.0,3.0,3.0,3.0,3.0,2.0,2.0,2.0,2.0,1.0,1.0,2.0,2.0,1.0]
+# obs = [3.0,1.0,1.0,1.0,3.0,1.0,2.0,1.0,2.0,2.0,3.0,3.0,2.0,3.0,3.0,3.0,3.0,1.0,3.0,3.0,4.0,3.0,2.0,2.0,2.0,1.0,1.0,2.0,2.0,1.0]
+
+SEQUENCE_LENGTH = length(seq_true)
+for j = 1:SEQUENCE_LENGTH
+	obs_sequence[j] = obs[j]
+end
 
 
 
@@ -32,8 +46,9 @@ NUM_PARTICLES_SAMP = 10
 
 ##########GENERATING DATA FUNCTIONS
 
+
 function transition(currentState, transition_mat)
-	
+	println(currentState)
 	sample_arr = rand(Multinomial(1, (transition_mat)'[:, currentState]))
 	nxtState = findin(sample_arr, 1)[1]
 	return nxtState
@@ -41,7 +56,6 @@ end
 
 
 function emission(currentState, emission_mat)
-	#@bp
 	sample_arr = rand(Multinomial(1, (emission_mat)'[:, currentState]))
 	currentObs = findin(sample_arr, 1)[1]
 	return currentObs
@@ -135,6 +149,11 @@ function extendParticle(particle, obsSeq, emission_mat, transition_mat)
 	currentState = particle[currentSize]["hidden_state"]
 	sampledState = transition(currentState, transition_mat)
 	particle[currentSize + 1]["hidden_state"] = sampledState[1]
+	
+	println("OBS:")
+	println(sampledState)
+	@bp
+
 	weight = (emission_mat)'[:, sampledState][newObs]
 	#println("sampledState ", sampledState, " obs ", newObs)
 	logWeight = log(weight)
@@ -215,6 +234,7 @@ function approxMarginalLikelihood(obsSeq, transition_mat, emission_mat, init_sta
 end
 	
 
+approxMarginalLikelihood(obs_sequence, transition_matrix, emission_matrix, 1)
 
 
 

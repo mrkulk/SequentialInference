@@ -14,7 +14,7 @@ function [ret_particles, ret_weights, ret_K_plus, means, sum_squares, inv_cov, l
 % data is processed one observation at a time and the particle set is
 % also returned having observed each observation
 
-RESAMPLE_SCHEME = 'MAXFILTER_BASIC';
+RESAMPLE_SCHEME = 'STRATIFIED';
 pc_max_ind = 1e5;
 pc_gammaln_by_2 = 1:pc_max_ind;
 pc_gammaln_by_2 = gammaln(pc_gammaln_by_2/2);
@@ -131,16 +131,16 @@ for t = index_at_which_to_start_estimation:T
 
     total_time = total_time + time_1_obs;
     if t==2
-        disp(['CRP PF:: Obs: ' num2str(t) '/' num2str(T) ]);
+        %%%%%% disp(['CRP PF:: Obs: ' num2str(t) '/' num2str(T) ]);
     elseif mod(t,5)==0
         rem_time = (time_1_obs*.05 + 0.95*(total_time/t))*T-total_time;
         if rem_time < 0
             rem_time = 0;
         end
-        disp(['CRP PF:: Obs: ' num2str(t) '/' num2str(T) ', Rem. Time: '...
-            secs2hmsstr(rem_time) ', Ave. Time: ' ...
-            secs2hmsstr((total_time/(t-2))) ', Elaps. Time: ' ...
-            secs2hmsstr(total_time) ', E[K^+] ' num2str(E_K_plus)]);
+%         disp(['CRP PF:: Obs: ' num2str(t) '/' num2str(T) ', Rem. Time: '...
+%             secs2hmsstr(rem_time) ', Ave. Time: ' ...
+%             secs2hmsstr((total_time/(t-2))) ', Elaps. Time: ' ...
+%             secs2hmsstr(total_time) ', E[K^+] ' num2str(E_K_plus)]);
     end
     tic
 

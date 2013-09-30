@@ -427,6 +427,7 @@ function putativeResample(time, particles_t, particles_t_minus_1, log_maxfilter_
 	#print("time:", time)
 	#println(maxfilter_cid_array)
 	#println(normalized_probabilities)
+	@bp
 	for i = 1:NUM_PARTICLES
 		sample_arr = rand(Multinomial(1,normalized_probabilities))
 		sampled_indx = findin(sample_arr, 1)[1]
@@ -452,7 +453,7 @@ function run_sampler()
 	particles[time] = Dict() #time = 0
 	for i = 1:NUM_PARTICLES
 		particles[time][i] = Dict() #partile_id = 0
-		particles[time][i] = {"weight" => 1, "hidden_state" => state}
+		particles[time][i] = {"weight" => 1/NUM_PARTICLES, "hidden_state" => state}
 	end
 	#normalizeWeights(time)
 	#resample(time)
@@ -479,8 +480,12 @@ function run_sampler()
 			end
 
 			particles[time][N] = Dict()
+			particles[time][N]["weight"]=NaN
 
+			PREV_WEIGHT = particles[time-1][N]["weight"]
 			z_posterior_array_probability, z_posterior_array_cid = path_integral(time,N)
+			z_posterior_array_probability = z_posterior_array_probability + PREV_WEIGHT
+
 			for ii=1:length(z_posterior_array_probability)
 				maxfilter_probability_array = myappend(maxfilter_probability_array, exp(z_posterior_array_probability[ii]))
 				log_maxfilter_probability_array = myappend(log_maxfilter_probability_array, z_posterior_array_probability[ii])
@@ -522,11 +527,11 @@ if length(ARGS) > 0
 	DELTA = 0#int(ARGS[2])
 	INTEGRAL_PATHS = 0#int(ARGS[3])
 else
-	NUM_PARTICLES = 10#1
+	NUM_PARTICLES = 3#1
 	DELTA = 0#3#10
 	INTEGRAL_PATHS = 1#2
 	SEED = 174#150 #5600
-	REPETITIONS = 10
+	REPETITIONS = 1
 end
 
 #println(string("NUM_PARTICLES:", NUM_PARTICLES, " DELTA:", DELTA, " INTEGRAL_PATHS:", INTEGRAL_PATHS))
@@ -540,7 +545,7 @@ data = loadObservations()
 
 MAXFILTERING = 1
 EQUIVALENCE_MAXFILTERING = 0
-ari_with_maxf = run_sampler()
+ari_with_maxf = 0#run_sampler()
 
 MAXFILTERING = 1
 EQUIVALENCE_MAXFILTERING = 1
