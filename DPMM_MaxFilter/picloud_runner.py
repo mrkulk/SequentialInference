@@ -39,5 +39,5 @@ def run_on_instance(trial_id):
 jids = cloud.map(run_on_instance, range(TRIALS), _env=cloud_environment, _type='c2', _cores=1)
 print jids
 result = cloud.result(jids)
-pickle.dump(result, open("putative_result_"+str(NUM_PARTICLES)+"particles_"+str(REPETITIONS)+"path.pkl","wb"))
+pickle.dump(result, open("K=1_putative_result_"+str(NUM_PARTICLES)+"particles_"+str(REPETITIONS)+"path.pkl","wb"))
 print "RESULT:", result

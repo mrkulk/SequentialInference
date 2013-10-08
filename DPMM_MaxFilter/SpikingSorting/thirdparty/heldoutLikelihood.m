@@ -13,7 +13,11 @@ FLAG = 0;
 
 new_spike_sortings = zeros(size(spike_sortings));
 total_heldout_loglikelihood = 0;
-for index=1:10%size(spike_sortings,1)
+
+USE_PWEIGHTS=0;
+TOTAL_RUNNINGS=num_particles;
+
+for index=1:TOTAL_RUNNINGS%10%size(spike_sortings,1)
 
     %index = map_spike_sorting_index;
     
@@ -78,6 +82,11 @@ for index=1:10%size(spike_sortings,1)
     disp('------------');
     disp(index);
     %lp_mvniw(map_spike_sorting(:,1001:8195),inspk(1001:9195,:)', mu_0, k_0,3,lambda_0)
+    
+    if USE_PWEIGHTS == 1
+        heldout_loglikelihood = heldout_loglikelihood*final_wts(index);
+    end
+    
     total_heldout_loglikelihood = total_heldout_loglikelihood + heldout_loglikelihood;
     disp(heldout_loglikelihood);
     %figure(index+10);
@@ -85,4 +94,4 @@ for index=1:10%size(spike_sortings,1)
 end
 
 disp('FINAL: ');
-disp(total_heldout_loglikelihood/10);
+disp(total_heldout_loglikelihood/TOTAL_RUNNINGS);

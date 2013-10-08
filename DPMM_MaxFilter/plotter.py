@@ -35,7 +35,7 @@ def genericPlot(X,Y,xlab,ylab,fname):
 
 
 
-fname = 'putative_result_10particles_30path'
+fname = '100PTS_putative_result_10particles_30path'
 data = pickle.load(open(fname+".pkl","rb"))
 
 f = pylab.figure()
@@ -68,8 +68,8 @@ ax.plot(X,with_maxf, color="black")
 ax.plot(X,with_eqmaxf, color="blue")"""
 
 
-pylab.xlabel('Dataset with different seed (same model parameters)',fontsize=15)
-pylab.ylabel('V-Measure Diff (30 samples avg/dataset)',fontsize=15)
+pylab.xlabel('Dataset with different seed (same model params)',fontsize=20)
+pylab.ylabel('V-Measure Diff (30 samples avg/dataset)',fontsize=20)
 pylab.savefig(fname+'.png')
 #pylab.ylim([-0.35, 0.35])
 #ax.grid(True)

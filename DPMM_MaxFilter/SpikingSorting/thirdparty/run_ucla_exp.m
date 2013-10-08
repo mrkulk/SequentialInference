@@ -40,8 +40,10 @@ end
 %in_sample_points = 1000;%number_of_spikes;
 %in_sample_training_data = reduced_dimensionality_waveforms(1:in_sample_points,:);
 %out_of_sample_training_data = reduced_dimensionality_waveforms(in_sample_points+1:end,:);
-in_sample_training_data = reduced_dimensionality_waveforms(1:2:number_of_spikes,:);
-out_of_sample_training_data = reduced_dimensionality_waveforms(2:2:number_of_spikes,:);
+
+
+in_sample_training_data = reduced_dimensionality_waveforms(1:number_of_spikes-200,:);%reduced_dimensionality_waveforms(1:2:number_of_spikes,:);
+out_of_sample_training_data = reduced_dimensionality_waveforms(number_of_spikes-200+1:number_of_spikes,:);%reduced_dimensionality_waveforms(2:2:number_of_spikes,:);
 in_sample_points = size(in_sample_training_data, 1);
 
 
@@ -155,8 +157,8 @@ end
 % filter suffers from one drawback, namely, alpha is instead
 % treated as a parameter instead of a random variable.  This is a difficult 
 % technical issue.
-num_particles = 100;%100;%num_sweeps-burned_in_index+1;
-[spike_sortings, spike_sorting_weights, number_of_neurons_in_each_sorting, PF_means, PF_sum_squares, PF_inv_cov, PF_log_det_cov, PF_counts] = particle_filter(in_sample_training_data', ...
+num_particles = 1000;%100;%num_sweeps-burned_in_index+1;
+[spike_sortings, spike_sorting_weights, number_of_neurons_in_each_sorting, PF_means, PF_sum_squares, PF_inv_cov, PF_log_det_cov, PF_counts, PUTATIVE_WTS] = particle_filter(in_sample_training_data', ...
     num_particles, a_0, b_0, mu_0, k_0, v_0, ...
     lambda_0,1);
     %lambda_0,mean(alpha_record), class_id_samples);

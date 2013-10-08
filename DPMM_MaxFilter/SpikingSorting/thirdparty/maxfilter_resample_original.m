@@ -1,4 +1,4 @@
-function [rx] = maxfilter_resample(x,w,N)
+function [rx,rw] = maxfilter_resample_original(x,w,N)
 % function [rx] = multinomial_resample(x,w,N)
 %
 %  returns N samples from the weighted particle set 
@@ -32,13 +32,15 @@ cnt = 1;
 for i = 1:N
     if i <= len_rec
         sampled_ind = record_indx(i);
+        rx(:,i) = x(:,sampled_ind);
+        rw(i) = w(sampled_ind);
     else
         sampled_ind = record_indx(1);
         %sampled_ind = sorted_indx_array(cnt);
         cnt=cnt+1;
+        rx(:,i) = x(:,sampled_ind);
+        rw(i) = 0;%%w(sampled_ind);
     end
-    rx(:,i) = x(:,sampled_ind);
-    rw(i) = w(sampled_ind);
 end
 
 
@@ -56,4 +58,10 @@ end
 % end
 
 
-rw = rw./sum(rw);
+if sum(rw) > 0
+    rw = rw./sum(rw);
+end
+
+if isnan(rw)
+    'notallowed'
+end

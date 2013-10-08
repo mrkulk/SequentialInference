@@ -1,4 +1,4 @@
-function [ret_particles, ret_weights, ret_K_plus, means, sum_squares, inv_cov, log_det_cov, counts] = particle_filter(training_data, ...
+function [ret_particles, ret_weights, ret_K_plus, means, sum_squares, inv_cov, log_det_cov, counts, FINAL_WTS] = particle_filter(training_data, ...
     num_particles, a_0, b_0, mu_0, k_0, v_0, ...
     lambda_0,alpha, partial_labels)
 %
@@ -131,16 +131,16 @@ for t = index_at_which_to_start_estimation:T
 
     total_time = total_time + time_1_obs;
     if t==2
-        %%%%%% disp(['CRP PF:: Obs: ' num2str(t) '/' num2str(T) ]);
+        disp(['CRP PF:: Obs: ' num2str(t) '/' num2str(T) ]);
     elseif mod(t,5)==0
         rem_time = (time_1_obs*.05 + 0.95*(total_time/t))*T-total_time;
         if rem_time < 0
             rem_time = 0;
         end
-%         disp(['CRP PF:: Obs: ' num2str(t) '/' num2str(T) ', Rem. Time: '...
-%             secs2hmsstr(rem_time) ', Ave. Time: ' ...
-%             secs2hmsstr((total_time/(t-2))) ', Elaps. Time: ' ...
-%             secs2hmsstr(total_time) ', E[K^+] ' num2str(E_K_plus)]);
+        disp(['CRP PF:: Obs: ' num2str(t) '/' num2str(T) ', Rem. Time: '...
+            secs2hmsstr(rem_time) ', Ave. Time: ' ...
+            secs2hmsstr((total_time/(t-2))) ', Elaps. Time: ' ...
+            secs2hmsstr(total_time) ', E[K^+] ' num2str(E_K_plus)]);
     end
     tic
 
@@ -178,7 +178,7 @@ for t = index_at_which_to_start_estimation:T
 
         % update the weights so that the particles (and weights) now represent the
         % predictive distribution
-        putative_weights(si:ei) = log(weights(n,cp))+log(prior);
+        putative_weights(si:ei) = log(weights(n,cp)+1e-50)+log(prior);
 
         % update the weights so that the particles (and weights) now
         % represent the posterior distribution at ''timestep'' t
@@ -202,10 +202,35 @@ for t = index_at_which_to_start_estimation:T
     % the M weights are computed up to a proportionality so we normalize
     % them here
     %putative_weights = putative_weights ./ sum(putative_weights);
+    if logsumexp(putative_weights) == -inf
+        a=1
+    end
     Z_norm = logsumexp(putative_weights);
     putative_weights = putative_weights - Z_norm;
     putative_weights = exp(putative_weights);
-    
+   
+    %%%%%% TURN OFF TO AVOID MULTIPLYING WEIGHTS %%%%%%%%%%%
+%     if exist('FINAL_WTS')
+%         if isnan(FINAL_WTS)
+%             'notallowed'
+%         end
+%         for i=1:length(putative_particles)
+%             pid = putative_particles(1,i);
+%             prev_pid_indx=find(picked_putative_particles(1,:)==pid);
+%             if length(prev_pid_indx) > 1
+%                 prev_pid_indx = prev_pid_indx(1);
+%             end
+%             putative_weights = putative_weights .* FINAL_WTS(prev_pid_indx);
+%         end
+%         if sum(putative_weights) > 0
+%             putative_weights = putative_weights/sum(putative_weights);
+%         end
+%         if isnan(putative_weights)
+%             a=1
+%         end
+%     end
+    %%%%%% END ----- TURN OFF TO AVOID MULTIPLYING WEIGHTS %%%%%%%%%%%
+
     c = find_optimal_c(putative_weights,N);
 
     % find pass-through ratio
@@ -221,13 +246,13 @@ for t = index_at_which_to_start_estimation:T
         weights(num_pass+1:end,np) = 1/c;
         
         if strcmp(RESAMPLE_SCHEME, 'STRATIFIED')
-            picked_putative_particles = stratified_resample(putative_particles(:,~pass_inds),putative_weights(~pass_inds),N-num_pass);
+            [picked_putative_particles,FINAL_WTS] = stratified_resample(putative_particles(:,~pass_inds),putative_weights(~pass_inds),N-num_pass);
         elseif strcmp(RESAMPLE_SCHEME , 'MULTINOMIAL')
             picked_putative_particles = multinomial_resample(putative_particles(:,~pass_inds),putative_weights(~pass_inds),N-num_pass);
         elseif strcmp(RESAMPLE_SCHEME , 'MAXFILTER')
-            picked_putative_particles = maxfilter_resample(putative_particles(:,~pass_inds),putative_weights(~pass_inds),N-num_pass);
+            [picked_putative_particles,FINAL_WTS] = maxfilter_resample(putative_particles(:,~pass_inds),putative_weights(~pass_inds),N-num_pass);
         elseif strcmp(RESAMPLE_SCHEME , 'MAXFILTER_BASIC')
-            picked_putative_particles = maxfilter_resample_original(putative_particles(:,~pass_inds),putative_weights(~pass_inds),N-num_pass);
+            [picked_putative_particles,FINAL_WTS] = maxfilter_resample_original(putative_particles(:,~pass_inds),putative_weights(~pass_inds),N-num_pass);
         else
             print 'ERROR'
             return

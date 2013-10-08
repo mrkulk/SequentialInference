@@ -48,7 +48,7 @@ end
 
 
 function transition(currentState, transition_mat)
-	println(currentState)
+	#println(currentState)
 	sample_arr = rand(Multinomial(1, (transition_mat)'[:, currentState]))
 	nxtState = findin(sample_arr, 1)[1]
 	return nxtState
@@ -56,6 +56,7 @@ end
 
 
 function emission(currentState, emission_mat)
+	@bp
 	sample_arr = rand(Multinomial(1, (emission_mat)'[:, currentState]))
 	currentObs = findin(sample_arr, 1)[1]
 	return currentObs
@@ -152,9 +153,8 @@ function extendParticle(particle, obsSeq, emission_mat, transition_mat)
 	
 	println("OBS:")
 	println(sampledState)
-	@bp
 
-	weight = (emission_mat)'[:, sampledState][newObs]
+	weight = (emission_mat)[:, sampledState][newObs]
 	#println("sampledState ", sampledState, " obs ", newObs)
 	logWeight = log(weight)
 	

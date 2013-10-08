@@ -1,4 +1,4 @@
-function [rx] = stratified_resample(x,w,N)
+function [rx,rw] = stratified_resample(x,w,N)
 % function [rx] = stratified_resample(x,w,N)
 %
 %  returns N samples from the weighted particle set 

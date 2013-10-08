@@ -1,4 +1,4 @@
-function [rx] = maxfilter_resample(x,w,N)
+function [rx,rw] = maxfilter_resample(x,w,N)
 % function [rx] = multinomial_resample(x,w,N)
 %
 %  returns N samples from the weighted particle set 
@@ -52,5 +52,10 @@ for i=1:N
 end
 
 
-rw = rw./sum(rw);
-    
+if sum(rw) > 0
+    rw = rw./sum(rw);
+end
+
+if isnan(rw)
+    'notallowed'
+end

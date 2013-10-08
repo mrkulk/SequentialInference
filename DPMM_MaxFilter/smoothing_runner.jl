@@ -1,5 +1,5 @@
 #Tejas Kulkarni - tejask@mit.edu
-# DPMM with Max Filtering
+# DPMM with Max Filtering - With Lookahead
 #Julia PATH: 
 #	/Users/tejas/Documents/julia/julia
 
@@ -379,6 +379,45 @@ function get_weight_lookahead(prev_support, prev_c_aggregate, time, prev_cid)
 end
 
 
+
+
+function lookahead(prev_support, prev_c_aggregate, cur_time, prev_cid)
+	current_support = deepcopy(prev_support)
+	current_c_aggregate = deepcopy(prev_c_aggregate)
+
+	lookahead_weight = 0
+	for time=cur_time:cur_time+LOOKAHEAD_DELTA
+		max_cid = max(current_support)
+		if prev_cid == max_cid
+			@bp
+			new_current_support = unique(myappend(max_cid, max_cid+1))
+		else
+			new_current_support = unique(current_support)
+		end
+
+		for j in new_current_support
+			new_current_c_aggregate = myappend(current_c_aggregate, j)
+			zj_probability = get_posterior_zj(j, new_current_c_aggregate, time)
+			z_posterior_array_probability = myappend(z_posterior_array_probability, zj_probability)
+			z_posterior_array_cid = myappend(z_posterior_array_cid, j)
+		end
+		#Variational objective
+		z_posterior_array_probability = exp(z_posterior_array_probability)
+		z_posterior_array_probability = z_posterior_array_probability/sum(z_posterior_array_probability)
+		perm = sortperm(maxfilter_probability_array, Sort.Reverse)
+		z_posterior_array_cid = z_posterior_array_cid[perm] #sorting w.r.t sorted probabilities
+		z_posterior_array_probability = z_posterior_array_probability[perm]
+		current_support = unique(myappend(current_support, z_posterior_array_cid[1]))
+		current_c_aggregate = myappend(current_c_aggregate, z_posterior_array_cid[1])
+
+		lookahead_weight = lookahead_weight + log(z_posterior_array_probability[1])
+	end
+	return lookahead_weight
+end
+
+
+
+
 function path_integral(time, N)
 	root_support = particles[time-1][N]["hidden_state"]["c_aggregate"]
 	max_root_support = max(root_support)
@@ -399,9 +438,9 @@ function path_integral(time, N)
 		zj_probability = get_posterior_zj(j, current_c_aggregate, time)
 
 		##### lookahead. this will be support it explores further
-		#if time + LOOKAHEAD_DELTA <= NUM_POINTS
-		#[[FIXME signs]]	zj_probability += get_weight_lookahead(unique(current_c_aggregate),current_c_aggregate, time+1, j)
-		#end
+		if time + LOOKAHEAD_DELTA <= NUM_POINTS
+			zj_probability += lookahead(unique(current_c_aggregate),current_c_aggregate, time+1, j)
+		end
 
 		z_posterior_array_probability = myappend(z_posterior_array_probability, zj_probability)
 		z_posterior_array_cid = myappend(z_posterior_array_cid, j)
@@ -531,7 +570,7 @@ else
 	DELTA = 0#3#10
 	INTEGRAL_PATHS = 1#2
 	SEED = 174#174#150 #5600
-	REPETITIONS = 1
+	REPETITIONS = 10
 end
 
 #println(string("NUM_PARTICLES:", NUM_PARTICLES, " DELTA:", DELTA, " INTEGRAL_PATHS:", INTEGRAL_PATHS))
@@ -544,26 +583,23 @@ srand(SEED)
 data = loadObservations()
 
 MAXFILTERING = 1
-EQUIVALENCE_MAXFILTERING = 1
-NUM_PARTICLES = 1
-ari_with_maxf = run_sampler()
+EQUIVALENCE_MAXFILTERING = 0
+ari_with_maxf = 0#run_sampler()
 
 MAXFILTERING = 1
 EQUIVALENCE_MAXFILTERING = 1
-NUM_PARTICLES = 10
 ari_with_eqmaxf = run_sampler()
 
 ari_without_maxf = 0
 for i=1:REPETITIONS
 	MAXFILTERING = 0
 	EQUIVALENCE_MAXFILTERING = 0
-	_ari_without_maxf = 0#run_sampler()
+	_ari_without_maxf = run_sampler()
 	ari_without_maxf += _ari_without_maxf
-	#println("MULT-RESAMPLE:", _ari_without_maxf, "  MAXFILTER[K=1]:", ari_with_maxf, " EQMAXF:", ari_with_eqmaxf)
+	println("MULT-RESAMPLE:", _ari_without_maxf, "  MAXFILTER:", ari_with_maxf, " EQMAXF:", ari_with_eqmaxf)
 end
 
 ari_without_maxf /= REPETITIONS;
-ari_with_maxf/=REPETITIONS;
 print([ari_without_maxf, ari_with_maxf, ari_with_eqmaxf])
 
 end

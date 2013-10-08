@@ -1,11 +1,11 @@
-%colors = ['r' 'b' 'm' 'g' 'y' 'm' 'y' 'b' 'r' 'g' 'k' 'm' 'y' 'b'];
+%colors = ['r' 'b' 'm' 'g' 'y' 'm' 'y' 'b' 'r' 'g' 'k' 'm' 'y' 'b' 'k' 'm' 'y' 'b' 'k' 'm' 'y' 'b' 'k' 'm' 'y' 'b'];
 load times_CSC4
-spikes=spikes(1:2:number_of_spikes,:);
-cluster_class = cluster_class(1:2:number_of_spikes,:);
+spikes=spikes(1:number_of_spikes-200,:);
+cluster_class = cluster_class(1:number_of_spikes-200,:);
 cluster_class(:,1) = cluster_class(:,1) + 1;
 
-%map_spike_sorting = spike_sortings(1,:);
-%map_spike_sorting = cluster_class(:,1)';
+map_spike_sorting = spike_sortings(1,:);
+map_spike_sorting = cluster_class(:,1)';
 
 
 colors={};
