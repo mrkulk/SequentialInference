@@ -527,7 +527,7 @@ if length(ARGS) > 0
 	DELTA = 0#int(ARGS[2])
 	INTEGRAL_PATHS = 0#int(ARGS[3])
 else
-	NUM_PARTICLES = 10#1
+	NUM_PARTICLES = 1#1
 	DELTA = 0#3#10
 	INTEGRAL_PATHS = 1#2
 	SEED = 174#174#150 #5600
@@ -563,7 +563,6 @@ for i=1:REPETITIONS
 end
 
 ari_without_maxf /= REPETITIONS;
-ari_with_maxf/=REPETITIONS;
 print([ari_without_maxf, ari_with_maxf, ari_with_eqmaxf])
 
 end
