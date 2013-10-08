@@ -35,7 +35,7 @@ def genericPlot(X,Y,xlab,ylab,fname):
 
 
 
-fname = '100PTS_putative_result_10particles_30path'
+fname = 'results/K=1_putative_result_1particles_1path'
 data = pickle.load(open(fname+".pkl","rb"))
 
 f = pylab.figure()
@@ -50,18 +50,21 @@ with_eqmaxf = []
 
 for i in range(len(data)):
     if len(data[i]) > 0:
-        print i, float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[0]), float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[1]), float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[2]) 
-        without_maxf.append(float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[0]))
-        with_maxf.append(float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[1]))
-        with_eqmaxf.append(float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[2]))
-        X.append(i)
+        try:
+            print i, float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[0]), float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[1]), float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[2]) 
+            without_maxf.append(float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[0]))
+            with_maxf.append(float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[1]))
+            with_eqmaxf.append(float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[2]))
+            X.append(i)
+        except Exception, e:
+            pass
 
-print 'Average (without_maxf):', sum(without_maxf)/len(data)
-print 'Average (with_maxf):', sum(with_maxf)/len(data)
-print 'Average (with_eqmaxf):', sum(with_eqmaxf)/len(data)
+print 'Average (without_maxf):', sum(without_maxf)/len(without_maxf)
+print 'Average (with_maxf):', sum(with_maxf)/len(with_maxf)
+print 'Average (with_eqmaxf):', sum(with_eqmaxf)/len(with_eqmaxf)
 
 
-ax.bar(X,map(operator.sub, with_eqmaxf, without_maxf),0.4,color='black')
+ax.bar(X,map(operator.sub, with_eqmaxf, with_maxf),0.4,color='black')
 
 """ax.plot(X,without_maxf, color="grey")
 ax.plot(X,with_maxf, color="black")

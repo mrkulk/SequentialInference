@@ -550,7 +550,7 @@ ari_with_maxf = run_sampler()
 
 MAXFILTERING = 1
 EQUIVALENCE_MAXFILTERING = 1
-NUM_PARTICLES = 10
+NUM_PARTICLES = 50
 ari_with_eqmaxf = run_sampler()
 
 ari_without_maxf = 0
