@@ -33,7 +33,7 @@ function stratifiedMaxFiltering(time, particles_t, particles_t_minus_1, maxfilte
 
 	# perm = sortperm(maxfilter_probability_array, Sort.Reverse)
 	
-	maxfilter_probability_array = maxfilter_probability_array/sum(maxfilter_probability_array)
+	#NONEED - maxfilter_probability_array = maxfilter_probability_array/sum(maxfilter_probability_array)
 	perm = sortperm(maxfilter_probability_array, Sort.Reverse)
 
 	#println( sum([i<0 for i in log_maxfilter_probability_array]) - length(log_maxfilter_probability_array))
@@ -85,11 +85,21 @@ function stratifiedMaxFiltering(time, particles_t, particles_t_minus_1, maxfilte
 			state["c"] = maxfilter_cid_array[indx]
 			state["c_aggregate"] = myappend(particles_t_minus_1[maxfilter_particle_struct[indx]]["hidden_state"]["c_aggregate"], state["c"])
 			particles_t[p]["hidden_state"]=state
-			particles_t[particle_cnt]["weight"] = maxfilter_probability_array[indx]
+			particles_t[p]["weight"] = 0#maxfilter_probability_array[indx]
 		end
 	end
 
-	#println(length(particles_t))
+	#Normalizing particle weights
+	Z=0
+	for i=1:NUM_PARTICLES
+		Z+=particles_t[i]["weight"] 
+	end
+	for i=1:NUM_PARTICLES
+		particles_t[i]["weight"] = particles_t[i]["weight"]/Z
+	end
+
+
+	#println(particles_t)
 	"""	
 	unique_maxfilter_cid_array = unique(maxfilter_cid_array)
 	unique_total_cids = length(unique_maxfilter_cid_array)

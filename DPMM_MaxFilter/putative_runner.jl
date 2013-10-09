@@ -48,7 +48,8 @@ data = Dict()
 
 
 #################### DATA LOADER AND PLOTTING ##################################
-const COLORS ={[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0],[1.0,1.0,0.0],[1.0,0.0,1.0], [rand(),rand(),rand()], [rand(),rand(),rand()], [rand(),rand(),rand()]}#[[rand(),rand(),rand()] for i =1:50]
+#const COLORS ={[1.0,0.0,0.0],[0.0,1.0,0.0],[0.0,0.0,1.0],[1.0,1.0,0.0],[1.0,0.0,1.0], [rand(),rand(),rand()], [rand(),rand(),rand()], [rand(),rand(),rand()]}#[[rand(),rand(),rand()] for i =1:50]
+const COLORS =[[rand(),rand(),rand()] for i =1:50]
 
 function plotPoints(data,fname)
 	for i=1:NUM_POINTS
@@ -495,18 +496,17 @@ function run_sampler()
 			particles[time][N] = Dict()
 			particles[time][N]["weight"]=NaN
 
-			PREV_WEIGHT = particles[time-1][N]["weight"]
+			PREV_WEIGHT = log(particles[time-1][N]["weight"])
 			z_posterior_array_probability, z_posterior_array_cid = path_integral(time,N)
-			z_posterior_array_probability = z_posterior_array_probability# + PREV_WEIGHT
+			z_posterior_array_probability = z_posterior_array_probability
 
 			for ii=1:length(z_posterior_array_probability)
-				maxfilter_probability_array = myappend(maxfilter_probability_array, exp(z_posterior_array_probability[ii]))
+				maxfilter_probability_array = myappend(maxfilter_probability_array, exp(z_posterior_array_probability[ii]+PREV_WEIGHT))
 				log_maxfilter_probability_array = myappend(log_maxfilter_probability_array, z_posterior_array_probability[ii])
 				maxfilter_cid_array = myappend(maxfilter_cid_array, z_posterior_array_cid[ii])
 				maxfilter_particle_struct = myappend(maxfilter_particle_struct, N)
 			end
 		end
-
 		if MAXFILTERING == 1
 			if EQUIVALENCE_MAXFILTERING == 1
 				stratifiedMaxFiltering(time, particles[time], deepcopy(particles[time-1]), maxfilter_probability_array, maxfilter_cid_array,maxfilter_particle_struct, NUM_PARTICLES)	
@@ -520,8 +520,17 @@ function run_sampler()
 			#recycle(time)
 		end
 
+		if time == 50
+			@bp
+		end
 		recycle(time)
-
+		# println("------------------------------------------------")
+		# for i=1:NUM_PARTICLES
+		# 	println(particles[time][i]["hidden_state"]["c_aggregate"])
+		# end
+		# for i=1:NUM_PARTICLES		
+		# 	print(particles[time][i]["weight"])
+		# end
 		#println(particles)
 		if mod(time, NUM_POINTS) == 0
 			return plotPointsfromChain(time)
@@ -544,8 +553,8 @@ else
 	DELTA = 0#3#10
 	INTEGRAL_PATHS = 1#2
 	SEED = 174#174#150 #5600
-	REPETITIONS = 2
-	DATASET=1
+	REPETITIONS = 1
+	DATASET=4
 end
 
 #println(string("NUM_PARTICLES:", NUM_PARTICLES, " DELTA:", DELTA, " INTEGRAL_PATHS:", INTEGRAL_PATHS))
@@ -564,14 +573,14 @@ ari_ICM = run_sampler()
 
 MAXFILTERING = 1
 EQUIVALENCE_MAXFILTERING = 1
-NUM_PARTICLES = 50
+NUM_PARTICLES = 20
 ari_with_eqmaxf = run_sampler()
 
 ari_multinomial = []#0
 for i=1:REPETITIONS
 	MAXFILTERING = 0
 	EQUIVALENCE_MAXFILTERING = 0
-	NUM_PARTICLES = 50
+	NUM_PARTICLES = 20
 	ari_multinomial_value = run_sampler()
 	ari_multinomial =myappend(ari_multinomial, ari_multinomial_value)#+= _ari_without_maxf
 
