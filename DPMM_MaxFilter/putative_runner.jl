@@ -110,9 +110,22 @@ function loadObservations2()
 end
 
 
-function loadObservations()
+function loadObservations(DATASET)
 	data = Dict()
-	mu,std,mixture_weights = dataset2()
+	if DATASET == 1
+		mu,std,mixture_weights = dataset1()
+	elseif DATASET == 2
+		mu,std,mixture_weights = dataset2()
+	elseif DATASET == 3
+		mu,std,mixture_weights = dataset3()
+	elseif DATASET == 4
+		mu,std,mixture_weights = dataset4()
+	elseif DATASET == 5
+		mu,std,mixture_weights = dataset5()
+	elseif DATASET == 6
+		mu,std,mixture_weights = dataset6()
+	end	
+
 	data["c_aggregate"] = int(zeros(NUM_POINTS))
 
 	data["get_data_arr"] = Dict()
@@ -523,7 +536,7 @@ if length(ARGS) > 0
 	NUM_PARTICLES = int(ARGS[1])
 	SEED = int(ARGS[2])
 	REPETITIONS = int(ARGS[3])
-
+	DATASET=int(ARGS[4])
 	DELTA = 0#int(ARGS[2])
 	INTEGRAL_PATHS = 0#int(ARGS[3])
 else
@@ -531,7 +544,8 @@ else
 	DELTA = 0#3#10
 	INTEGRAL_PATHS = 1#2
 	SEED = 174#174#150 #5600
-	REPETITIONS = 1
+	REPETITIONS = 2
+	DATASET=1
 end
 
 #println(string("NUM_PARTICLES:", NUM_PARTICLES, " DELTA:", DELTA, " INTEGRAL_PATHS:", INTEGRAL_PATHS))
@@ -541,29 +555,32 @@ LOOKAHEAD_DELTA = 0
 ONE_MODE_AT_TIME = false
 
 srand(SEED)
-data = loadObservations()
+data = loadObservations(DATASET)
 
 MAXFILTERING = 1
 EQUIVALENCE_MAXFILTERING = 1
 NUM_PARTICLES = 1
-ari_with_maxf = run_sampler()
+ari_ICM = run_sampler()
 
 MAXFILTERING = 1
 EQUIVALENCE_MAXFILTERING = 1
 NUM_PARTICLES = 50
 ari_with_eqmaxf = run_sampler()
 
-ari_without_maxf = 0
+ari_multinomial = []#0
 for i=1:REPETITIONS
 	MAXFILTERING = 0
 	EQUIVALENCE_MAXFILTERING = 0
-	_ari_without_maxf = 0#run_sampler()
-	ari_without_maxf += _ari_without_maxf
-	#println("MULT-RESAMPLE:", _ari_without_maxf, "  MAXFILTER[K=1]:", ari_with_maxf, " EQMAXF:", ari_with_eqmaxf)
+	NUM_PARTICLES = 50
+	ari_multinomial_value = run_sampler()
+	ari_multinomial =myappend(ari_multinomial, ari_multinomial_value)#+= _ari_without_maxf
+
+	#println("MULT-RESAMPLE:", ari_multinomial_value, "  ICM[K=1]:", ari_ICM, " EQMAXF:", ari_with_eqmaxf)
 end
 
-ari_without_maxf /= REPETITIONS;
-print([ari_without_maxf, ari_with_maxf, ari_with_eqmaxf])
+final_ari_mult_mean = mean(ari_multinomial)
+final_ari_mult_std = std(ari_multinomial)
+print([final_ari_mult_mean, ari_ICM, ari_with_eqmaxf,ari_multinomial])
 
 end
 

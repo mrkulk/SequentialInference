@@ -50,29 +50,27 @@ with_eqmaxf = []
 
 for i in range(len(data)):
     if len(data[i]) > 0:
-        try:
+        if len(data[i])>1:
             print i, float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[0]), float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[1]), float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[2]) 
             without_maxf.append(float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[0]))
             with_maxf.append(float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[1]))
             with_eqmaxf.append(float(data[i].split('\n')[0].replace("[","").replace("]","").split(",")[2]))
-            X.append(i)
-        except Exception, e:
-            pass
+            X.append(CNT);CNT+=1
 
 print 'Average (without_maxf):', sum(without_maxf)/len(without_maxf)
 print 'Average (with_maxf):', sum(with_maxf)/len(with_maxf)
 print 'Average (with_eqmaxf):', sum(with_eqmaxf)/len(with_eqmaxf)
 
 
-ax.bar(X,map(operator.sub, with_eqmaxf, with_maxf),0.4,color='black')
+ax.bar(X,map(operator.sub, with_eqmaxf, with_maxf),0.05,color='black')
 
 """ax.plot(X,without_maxf, color="grey")
 ax.plot(X,with_maxf, color="black")
 ax.plot(X,with_eqmaxf, color="blue")"""
 
 
-pylab.xlabel('Dataset with different seed (same model params)',fontsize=20)
-pylab.ylabel('V-Measure Diff (30 samples avg/dataset)',fontsize=20)
+pylab.xlabel('Dataset',fontsize=35)
+pylab.ylabel('V-Measure Diff',fontsize=35)# (30 samples avg/dataset)
 pylab.savefig(fname+'.png')
 #pylab.ylim([-0.35, 0.35])
 #ax.grid(True)
