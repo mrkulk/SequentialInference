@@ -1,8 +1,7 @@
 ###Dirichlet Process Mixture Model - Gaussian Observations
 ==============
 
-This repo contains gibbs, SMC and Variational implementation of DPMM. Gibbs sampler is written in python and other samplers are written in
-Julia. Julia was partly used as a learning exercise but more importantly to explore speed up due to its LLVM-JIT compilation.
+This repo contains gibbs, SMC and Variational implementation of DPMM. Julia was partly used as a learning exercise but more importantly to explore speed up due to its LLVM-JIT compilation.
 
 #### SMC Sampler
 To run:
