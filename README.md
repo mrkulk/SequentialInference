@@ -7,7 +7,7 @@ This repo contains gibbs, SMC and Variational implementation of DPMM. Julia was 
 To run:
 - Julia DPMM_SMC/runner.jl
 
-#### Max Filtering (Algorithm proposed by Sam Gershman)
+#### Max Filtering
 To run:
 - Julia DPMM_MaxFilter/runner.jl
 
